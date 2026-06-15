@@ -1,6 +1,6 @@
 const WoditorGameSettings = {
-    assetVersion: "pages-20260615-2",
-    projectId: "browser-woditor-pages-test-20260615-2",  // ブラウザの保存先に利用されます(一応日本語でも可)
+    assetVersion: "pages-20260615-3",
+    projectId: "browser-woditor-pages-test-20260615-3",  // ブラウザの保存先に利用されます(一応日本語でも可)
     projectName: "Browser Woditor Pages Test", // タイトルバーに表示されます
     noSystemTouch: false,                     // false 何もしない true ブラウザウディタが用意したタッチ操作を無効化してマウスエミュレート
     requestFullScreen: false,                 // false 何もしない true ゲーム起動時に↓方向のフルスクリーン化を試みる(iOS無効)
