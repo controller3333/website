@@ -484,7 +484,36 @@
     </div>
   </div>
 
-  <script type="text/javascript" src="settings.js"></script>
+  <script type="text/javascript" src="settings.js?v=pages-20260615-2"></script>
+  <script type="text/javascript">
+    (() => {
+      const assetVersion = WoditorGameSettings.assetVersion || "pages-20260615-2";
+      const originalFetch = window.fetch.bind(window);
+
+      function versionSameOriginAsset(input) {
+        try {
+          const url = new URL(input, window.location.href);
+          if (url.origin !== window.location.origin) {
+            return input;
+          }
+
+          if (!url.searchParams.has("v")) {
+            url.searchParams.set("v", assetVersion);
+          }
+          return url.toString();
+        } catch {
+          return input;
+        }
+      }
+
+      window.fetch = (input, init) => {
+        if (typeof input === "string" || input instanceof URL) {
+          return originalFetch(versionSameOriginAsset(input), init);
+        }
+        return originalFetch(input, init);
+      };
+    })();
+  </script>
   <script type="text/javascript" src="lib/jszip.min.js"></script>
   <script type="text/javascript" src="lib/hammer.min.js"></script>
   <script type="text/javascript" src="lib/keydispatch.js"></script>
@@ -524,9 +553,9 @@
     };
 
   </script>
-  <script type="module" src="lib/benten_front.js"></script>
-  <script type="text/javascript" src="lib/system.js"></script>
-  <script async type="text/javascript" src="woditor.js"></script>
+  <script type="module" src="lib/benten_front.js?v=pages-20260615-2"></script>
+  <script type="text/javascript" src="lib/system.js?v=pages-20260615-2"></script>
+  <script async type="text/javascript" src="woditor.js?v=pages-20260615-2"></script>
 </body>
 
 </html>
