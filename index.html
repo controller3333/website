@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ja-JP">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>Browser Woditor</title>
+  <!-- ↑の仮タイトルは読み込み時にsettings.js の projectNameで自動的に置き換えられます-->
+  <style>
+    body {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh; /* iOSのため */
+      margin: 0 0 0 0;
+      padding: 0 0 0 0;
+      overflow: hidden;
+
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    a {
+      color: #fff;
+    }
+    a:visited {
+      color: #ddd;
+    }
+
+    #outer{
+      touch-action: manipulation;
+      display: flex;
+      flex-direction: column;
+      justify-items: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    #screen-holder-left{
+      display: flex;
+      height: 100%;
+    }
+
+    #screen-holder-main{
+      margin: 0 0 0 0;
+      padding: 0 0 0 0;
+    }
+
+    #main{
+      height: 100%;
+      display: grid;
+      grid-template-columns: 100%;
+      grid-template-rows: 1fr auto 1fr;
+    }
+
+    #screen {
+      display: grid;
+      grid-template-columns: 100%;
+      grid-template-rows: 1fr auto 1fr;
+    }
+
+    #screen-holder-right{
+      display: flex;
+      height: 100%;
+    }
+
+    .screen-side {
+      flex: auto;
+    }
+
+    .side-content{
+      height: 100%;
+    }
+
+    #main-header {
+      display: flex;
+      align-items: center;
+    }
+
+    #main-content{
+      position: relative;
+      display: flex;
+      justify-items: center;
+      align-items: center;
+    }
+
+    #main-footer {
+      height: 5vmin;
+      height: 5dvmin;
+      font-size: 2vmin;
+      font-size: 2dvmin;
+      text-align: center;
+    }
+
+    #main-footer-additional {
+      margin: 5px;
+    }
+
+    #main-footer-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #error-log{
+      font-size: 2vmin;
+      font-size: 2dvmin;
+    }
+
+    #title-content {
+      height: 5vmin;
+      height: 5dvmin;
+      margin: 0;
+      margin-left: 24px;
+      font-size: 2vmin;
+      font-size: 2dvmin;
+    }
+
+    #canvas {
+      width: 100%;
+      height: 100%;
+      border: 0px none;
+      background-color: #333333ff;
+      outline: none;
+      position: relative;
+      left: 50%;
+      top: 50%;
+      translate: -50% -50%;
+      background-image: url("img/bwoditor.svg");
+      background-repeat: no-repeat;
+      background-size: 40%;
+      background-position: center;
+    }
+
+    .itemh {
+      box-sizing: border-box;
+      border: 1px;
+      border-color: darkslategray;
+      border-style: solid;
+      border-radius: 7px;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      display: grid;
+      align-items: center;
+      text-align: center;
+      font-size: 2.5vh;
+      background-color: whitesmoke; /*下の方でjavascriptで上書きしてます(押しっぱ表示のため)*/
+      cursor: pointer;
+    }
+
+    #right-hold{
+      background-image: url("img/righthold.png");
+      background-repeat: no-repeat;
+      background-size: 6vw;
+      background-position: center;
+    }
+
+    #move-axis{
+      background-image: url("img/moveaxis.png");
+      background-repeat: no-repeat;
+      background-size: 6vw;
+      background-position: center;
+    }
+
+    #enter{
+      background-image: url("img/enter.png");
+      background-repeat: no-repeat;
+      background-size: 6vw;
+      background-position: center;
+    }
+
+    #esc{
+      background-image: url("img/esc.png");
+      background-repeat: no-repeat;
+      background-size: 6vw;
+      background-position: center;
+    }
+
+    #shift{
+      background-image: url("img/shift.png");
+      background-repeat: no-repeat;
+      background-size: 6vw;
+      background-position: center;
+    }
+
+    .sub-button{
+      border: solid;
+      border-width: 1px;
+      font-size: 3vmin;
+      margin: 2px;
+      padding: 3px;
+    }
+
+    .check{
+      font-size: 3vmin;
+      font-size: 3dvmin;
+    }
+
+    /* popup */
+    #popup {
+      height: auto;
+      padding: 1vw;
+      max-width: 50vmin;
+      min-width: 50vmin;
+      margin-left: -25vmin;
+      background-color: #444;
+      color: #fff;
+      text-align: center;
+      border-radius: 2px;
+      padding: 5px;
+      position: fixed;
+      z-index: 1;
+      left: 50%;
+      top: 30px;
+      font-size: 3vmin;
+    }
+
+    #toast {
+      visibility: hidden;
+      max-width: 250px;
+      min-width: 250px;
+      margin-left: -125px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 2px;
+      padding: 5px;
+      position: fixed;
+      z-index: 1;
+      left: 50%;
+      bottom: 30px;
+    }
+
+    #toast.show {
+      visibility: visible;
+      -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+      animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    }
+
+    @-webkit-keyframes fadein {
+      from {bottom: 0; opacity: 0;}
+      to {bottom: 30px; opacity: 1;}
+    }
+
+    @keyframes fadein {
+      from {bottom: 0; opacity: 0;}
+      to {bottom: 30px; opacity: 1;}
+    }
+
+    @-webkit-keyframes fadeout {
+      from {bottom: 30px; opacity: 1;}
+      to {bottom: 0; opacity: 0;}
+    }
+
+    @keyframes fadeout {
+      from {bottom: 30px; opacity: 1;}
+      to {bottom: 0; opacity: 0;}
+    }
+
+    #settings {
+      min-width: 8vmin;
+      min-height: 8vmin;
+      position: fixed;
+      top: 0px;
+      left: 0px;
+      padding: 10px 10px;
+      background-color: rgba(175, 175, 175, 0.562);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: move;
+      z-index: 1000;
+
+      background-image: url("img/setting.png");
+      background-repeat: no-repeat;
+      background-size: 5vmin;
+      background-position: center;
+
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    #savedata{
+      font-size: 2.5vmin;
+    }
+
+    #outer {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    #container {
+        display: grid;
+        height: 100vh;
+        height: 100dvh;
+        width: 100vw;
+        width: 100dvw;
+        overflow: hidden;
+    }
+
+    #screen-holder-left, #screen-holder-main, #screen-holder-right {
+        flex: 1;
+        overflow: hidden;
+        margin: 2px;
+    }
+
+    #container {
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+        grid-template-rows: 1fr 0.01fr;
+    }
+
+    #canvas {
+      width: auto; 
+      height: 100vh; 
+      height: 100dvh;
+    }
+
+    @media (max-aspect-ratio: 3.5/4) {
+        #container {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr 0.05fr;
+        }
+        #screen-holder-left {
+            order: 2;
+        }
+        #screen-holder-main {
+            order: 1;
+            grid-column: 1 / span 2;
+        }
+        #screen-holder-right {
+            order: 3;
+        }
+        #canvas {
+          width: 100vw;
+          width: 100dvw;
+          height: auto;
+        }
+    }
+    @media (min-aspect-ratio: 3.5/4) {
+        #container {
+            grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+            grid-template-rows: 1fr 0.01fr;
+        }
+        #screen-holder-left {
+            order: 1;
+        }
+        #screen-holder-main {
+            order: 2;
+            max-height: 100%;
+        }
+        #screen-holder-right {
+            order: 3;
+        }
+        #canvas {
+          width: auto; 
+          height: 100vh; 
+          height: 100dvh;
+        }
+    }
+
+    #touchtostart{
+      position:absolute; 
+      left: 0; 
+      top: 80%; 
+      width: 100%;
+      color: white;
+      font-size: 3vmin;
+    }
+
+    #bwoditorerror{
+      height: auto;
+      overflow: auto;
+      text-wrap: wrap;
+      font-size: 2vmin;
+    }
+
+  </style>
+</head>
+
+<body>
+  <audio id="sound" src="assets/sample.wav" preload="auto" hidden></audio> <!--iOS調整用 -->
+  <div id="toast"></div>
+  <div id="outer">
+    <div id="container">
+      <div id="screen-holder-left">
+        <div class="screen-side" id="screen-left">
+          <div class="side-header" id="left-header">
+          </div>
+          <div class="side-content" id="left-content">
+            <div id="right-hold" class="itemh" style="width: 100%; height: 30%;"></div> <!--systems.jsで特殊設定(right-hold) -->
+            <span id="move-axis" class="itemh" style="width: 100%; height: 70%;"></span> <!--keydispatch.js内で特殊設定 -->
+          </div>
+          <div class="side-footer" id="lefft-footer">
+          </div>
+        </div>
+      </div>
+
+      <div id="screen-holder-main">
+        <div id="main">
+          <div class="padding"></div>
+          <div id="screen">
+            <div id="main-header">
+              <div id="title-content">
+                <p id="title"></p>
+              </div>
+            </div>
+            <div id="main-content">
+              <div id="popup" hidden>
+                <div>
+                  <span><input class="sub-button" type="button" onclick="openLink('readme.html')" ontouchstart="openLink('readme.html')" value="説明書(.html)"/></span>
+                  <span><input class="sub-button" type="button" onclick="openLink('LICENSE.zip')" ontouchstart="openLink('LICENSE.zip')" value="ライセンス(.zip)"/></span>
+                </div>
+                <div style="margin-top: 5px;">
+                  <span><input class="sub-button" type="button" id="fullscreen" value="全画面化/解除"/></span>
+                  <span><input class="sub-button" type="button" onclick="dispatchClick(119)" ontouchstart="dispatchClick(119)" value="F8"/></span>
+                </div>
+                <div>
+                  <span><input class="sub-button" type="button" id="no-system-touch" value="マウス操作" onclick="toggleNoSystemTouch()" ontouchstart="toggleNoSystemTouch()"/></span>
+                  <span><input class="sub-button" type="button" id="switch-ui" value="UI切り替え" onclick="toggleSwitchUI()" ontouchstart="toggleSwitchUI()"/></span>
+                </div>
+                <div>
+                  <span><input class="sub-button" type="button" id="downloadsavedir" onclick="downloadSaveDir()" ontouchstart="downloadSaveDir()" value="SaveフォルダDL"/></span>
+                </div>
+                <hr/>
+                <div>
+                  <a>↓Saveフォルダにアップロード</a>
+                  <input type="file" id="savefiles"  onchange="uploadSaveDir()" multiple />
+                  <a id="savedownload" download="Save.zip" hidden>Download</a>
+                </div>
+                <div>
+                  <p class="footer-text" hidden>↓一時セーブデータUP(リロードで消えます)</p>
+                  <input class="sub-button" type="file" onchange="uploadSaveData()" id="savedata" name="savedata" hidden/>
+                </div>
+                <hr/>
+                <p id="bwoditorerror">No Error</p>
+              </div>
+              <button id="settings" oncontextmenu="event.preventDefault()"></button>
+              <canvas id="canvas" width="640px" height="480px" data-webgl2="true" oncontextmenu="event.preventDefault()"
+                tabindex="-1"></canvas>
+              <input id="textinput" type="text" inputmode="text"
+                style="position:absolute; left: 0px; top: 0px; background: transparent; border: none; outline-width: 0; color: white; font-size: 100%;"
+                tabindex="1" hidden=true ontouchstart="document.getElementById('textinput').focus()"></input>
+              <p id="touchtostart"><!-- 起動時にlib/system.js clickToStartTextで置換されます --></p>
+            </div>
+            <div id="main-footer">
+              <div id="main-footer-links">
+                <div id="version-short" style="margin-right: 5px;">[BW ver dummy]</div>
+                <div id="memory-usage" style="margin-left: 5px;">使用メモリ:0MB</div>
+              </div>
+              <div id="main-footer-additional" hidden>
+                <p id="readme" class="footer-text" hidden>ReadMe</p>
+                <p id="error-log"></p>
+              </div>
+            </div>
+          </div>
+          <div class="padding"></div>
+        </div>
+      </div>
+
+      <div id="screen-holder-right">
+        <div class="screen-side" id="screen-right">
+          <div class="side-header" id="right-header"></div>
+          <div class="side-content right-content">
+            <div id="shift" class="itemh" style="width: 100%; height: 30%;"></div>
+            <div id="esc" class="itemh" style="width: 100%; height: 30%;"></div>
+            <div id="enter" class="itemh" style="width: 100%; height: 40%;"></div>
+          </div>
+          <div class="side-footer" id="right-footer">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript" src="settings.js"></script>
+  <script type="text/javascript" src="lib/jszip.min.js"></script>
+  <script type="text/javascript" src="lib/hammer.min.js"></script>
+  <script type="text/javascript" src="lib/keydispatch.js"></script>
+  <script type="text/javascript">
+    function adjustGameUI(){
+      const isPortrait = window.matchMedia('(max-aspect-ratio: 3.5/4)').matches;
+
+      const outer = document.getElementById("outer");
+      const outerSize = outer.getBoundingClientRect();
+      const offsetX = outerSize.left;
+      const offsetY = outerSize.top;
+      const wholeWidth = window.innerWidth - offsetX;
+      const wholeHeight = window.innerHeight - offsetY;
+      const canvas = document.getElementById("canvas");
+      const aspectRatio = canvas.width / canvas.height;
+      const noSideButtons = WoditorGameSettings.hideSideButtons || WoditorGameSettings.isFullscreen;
+      const noHeaderFooter = WoditorGameSettings.hideHeaderFooter || WoditorGameSettings.isFullscreen;
+      const minButtonWidth = (noSideButtons || isPortrait) ? 0 : 200;
+      const canvasRate =  noHeaderFooter ? 1.0 : 0.9;
+      const idealHeight = wholeHeight * canvasRate;
+      const idealWidth = idealHeight * aspectRatio + minButtonWidth;
+      const actualCanvasWidth = wholeWidth > idealWidth ? idealHeight * aspectRatio : wholeWidth - minButtonWidth; 
+      const actualCanvasHeight = actualCanvasWidth / aspectRatio;
+
+      document.getElementById("screen-left").hidden = noSideButtons;
+      document.getElementById("screen-right").hidden = noSideButtons;
+      document.getElementById("title-content").hidden = noHeaderFooter;
+      document.getElementById("main-footer").hidden = noHeaderFooter;
+
+      outer.style.width = wholeWidth + "px";
+      outer.style.height = wholeHeight + "px";
+      canvas.style.width = actualCanvasWidth + "px";
+      canvas.style.height = actualCanvasHeight + "px";
+
+      const main = document.getElementById("main");
+      main.style.top = (wholeHeight - actualCanvasHeight) / 2 + "px";
+    };
+
+  </script>
+  <script type="module" src="lib/benten_front.js"></script>
+  <script type="text/javascript" src="lib/system.js"></script>
+  <script async type="text/javascript" src="woditor.js"></script>
+</body>
+
+</html>

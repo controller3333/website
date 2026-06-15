@@ -1,0 +1,60 @@
+ErrorDocument 404 default
+ErrorDocument 403 default
+
+AddType application/javascript .js
+AddType text/javascript .js
+AddType application/wasm .wasm
+
+<IfModule mod_speling.c>
+    CheckSpelling On
+    CheckCaseOnly On
+</IfModule>
+
+<FilesMatch ".(wasm)$">
+    Header set Cache-Control "no-cache"
+</FilesMatch>
+
+<FilesMatch ".(html)$">
+    Header set Cache-Control "no-cache"
+</FilesMatch>
+
+<FilesMatch ".(js)$">
+    Header set Cache-Control "no-cache"
+</FilesMatch>
+
+Header add Cross-Origin-Embedder-Policy "require-corp"
+Header add Cross-Origin-Opener-Policy "same-origin"
+
+
+<IfModule mod_mime.c>
+    # MIMEタイプの設定
+    AddType application/wasm .wasm
+    AddType font/ttf .ttf
+    AddType font/ttc .ttc
+    AddType font/otf .otf
+    AddEncoding gzip .gz
+    AddType application/wasm .wasm.gz
+    AddType font/ttf .ttf.gz
+    AddType font/ttc .ttc.gz
+    AddType font/otf .otf.gz
+</IfModule>
+
+<IfModule mod_deflate.c>
+    # GZIP圧縮の有効化
+    SetOutputFilter DEFLATE
+    AddOutputFilterByType DEFLATE application/wasm font/ttf font/ttc font/otf
+</IfModule>
+
+<IfModule mod_headers.c>
+    # GZIP形式で配信する際のヘッダー設定
+    <FilesMatch "\.(wasm|ttf|ttc|otf)\.gz$">
+        Header set Content-Encoding gzip
+        Header set Cache-Control "max-age=31536000"
+    </FilesMatch>
+</IfModule>
+
+# GZIPファイルへのリクエストリダイレクト
+RewriteEngine On
+RewriteCond %{HTTP:Accept-Encoding} gzip
+RewriteCond %{REQUEST_FILENAME}\.gz -s
+RewriteRule ^(.*)\.(wasm|ttf|ttc|otf)$ $1.$2.gz [QSA]
