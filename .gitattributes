@@ -1,0 +1,2 @@
+# Browser Woditor reads these files strictly enough that LF-only hosting breaks startup.
+*.ini text eol=crlf
