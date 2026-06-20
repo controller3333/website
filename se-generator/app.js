@@ -60,18 +60,20 @@
         { id: "seed", label: "シード", type: "number", value: 1103, min: 1, max: 9999, step: 1 },
       ],
     },
-    sample: {
-      name: "サンプル",
+    grains: {
+      name: "粒ノイズ",
       group: "Source",
-      color: "#64748b",
+      color: "#a3e635",
       inputs: [],
       outputs: [{ id: "out", label: "出力", kind: "audio" }],
       params: [
-        { id: "file", label: "ファイル", type: "file" },
-        { id: "level", label: "音量", type: "number", value: 1, min: 0, max: 2, step: 0.01 },
-        { id: "pitch", label: "ピッチ", type: "number", value: 0, min: -24, max: 24, step: 0.1, unit: "st" },
-        { id: "start", label: "開始", type: "number", value: 0, min: 0, max: 10, step: 0.001, unit: "s" },
-        { id: "reverse", label: "逆再生", type: "checkbox", value: false },
+        { id: "seed", label: "シード", type: "number", value: 4101, min: 1, max: 9999, step: 1 },
+        { id: "density", label: "密度", type: "number", value: 90, min: 1, max: 400, step: 1, unit: "/s" },
+        { id: "duration", label: "長さ", type: "number", value: 0.16, min: 0.005, max: 3, step: 0.001, unit: "s" },
+        { id: "decay", label: "粒減衰", type: "number", value: 0.018, min: 0.001, max: 0.3, step: 0.001, unit: "s" },
+        { id: "tone", label: "粒の高さ", type: "number", value: 6400, min: 200, max: 18000, step: 1, unit: "Hz" },
+        { id: "spread", label: "散り", type: "number", value: 0.62, min: 0, max: 1, step: 0.01 },
+        { id: "level", label: "音量", type: "number", value: 0.8, min: 0, max: 2, step: 0.01 },
       ],
     },
     lfo: {
@@ -238,15 +240,6 @@
     },
   };
 
-  const sampleAssets = {
-    gravelStones01: { url: "./assets/sfx/gravel_stones_01.ogg", label: "砂利 石粒 01" },
-    gravelStones02: { url: "./assets/sfx/gravel_stones_02.ogg", label: "砂利 石粒 02" },
-    gravelStones03: { url: "./assets/sfx/gravel_stones_03.ogg", label: "砂利 石粒 03" },
-    gravelRpgStones01: { url: "./assets/sfx/gravel_rpg_stones_01.ogg", label: "砂利 乾き 01" },
-    gravelRpgStones02: { url: "./assets/sfx/gravel_rpg_stones_02.ogg", label: "砂利 乾き 02" },
-    gravelRpgStones04: { url: "./assets/sfx/gravel_rpg_stones_04.ogg", label: "砂利 乾き 04" },
-  };
-
   let state = null;
   let nodeSerial = 1;
   let selectedNodeId = null;
@@ -256,12 +249,11 @@
   let rendered = null;
   let audioCtx = null;
   let sourceNode = null;
-  const sampleStore = new Map();
 
   function defaultsFor(type) {
     const params = {};
     for (const p of nodeDefs[type].params) {
-      if (p.type !== "file") params[p.id] = p.value;
+      params[p.id] = p.value;
     }
     return params;
   }
@@ -274,7 +266,6 @@
       x,
       y,
       params: { ...defaultsFor(type), ...params },
-      fileName: "",
     };
   }
 
@@ -430,7 +421,7 @@
     };
   }
 
-  function buildPresetGravelEscapeDryMaterial() {
+  function buildPresetGravelEscapeDryGenerated() {
     nodeSerial = 1;
     const nodes = [];
     const connections = [];
@@ -444,45 +435,65 @@
 
     function addDryStep(index, x, y, cfg) {
       const prefix = `gravel${index}`;
-      add(makeNode("sample", x, y, {
-        asset: cfg.asset,
-        level: cfg.level,
-        pitch: cfg.pitch,
-        start: cfg.start,
-        reverse: false,
-      }, `${prefix}_sample`));
-      add(makeNode("filter", x + 205, y, { type: "highpass", cutoff: cfg.highpass, q: 0.35 }, `${prefix}_dry_cut`));
-      add(makeNode("filter", x + 410, y, { type: "lowpass", cutoff: cfg.lowpass, q: 0.5 }, `${prefix}_distance`));
-      add(makeNode("delay", x + 615, y, { time: cfg.delay, feedback: 0, mix: 1 }, `${prefix}_delay`));
-      link(`${prefix}_sample`, "out", `${prefix}_dry_cut`, "in");
-      link(`${prefix}_dry_cut`, "out", `${prefix}_distance`, "in");
-      link(`${prefix}_distance`, "out", `${prefix}_delay`, "in");
+      add(makeNode("grains", x, y, {
+        seed: cfg.seed,
+        density: cfg.rubDensity,
+        duration: cfg.duration,
+        decay: cfg.rubDecay,
+        tone: cfg.rubTone,
+        spread: cfg.rubSpread,
+        level: cfg.rubLevel,
+      }, `${prefix}_rub`));
+      add(makeNode("filter", x + 190, y, { type: "highpass", cutoff: cfg.rubHighpass, q: 0.35 }, `${prefix}_rub_hp`));
+      add(makeNode("filter", x + 380, y, { type: "lowpass", cutoff: cfg.lowpass, q: 0.55 }, `${prefix}_rub_lp`));
+
+      add(makeNode("grains", x, y + 235, {
+        seed: cfg.seed + 97,
+        density: cfg.tickDensity,
+        duration: cfg.duration * 0.72,
+        decay: cfg.tickDecay,
+        tone: cfg.tickTone,
+        spread: cfg.tickSpread,
+        level: cfg.tickLevel,
+      }, `${prefix}_tick`));
+      add(makeNode("filter", x + 190, y + 235, { type: "highpass", cutoff: cfg.tickHighpass, q: 0.35 }, `${prefix}_tick_hp`));
+      add(makeNode("filter", x + 380, y + 235, { type: "lowpass", cutoff: cfg.tickLowpass, q: 0.5 }, `${prefix}_tick_lp`));
+
+      add(makeNode("mixer", x + 590, y + 88, { levelA: cfg.rubMix, levelB: cfg.tickMix, levelC: 0, levelD: 0 }, `${prefix}_mix`));
+      add(makeNode("delay", x + 785, y + 122, { time: cfg.delay, feedback: 0, mix: 1 }, `${prefix}_delay`));
+      link(`${prefix}_rub`, "out", `${prefix}_rub_hp`, "in");
+      link(`${prefix}_rub_hp`, "out", `${prefix}_rub_lp`, "in");
+      link(`${prefix}_rub_lp`, "out", `${prefix}_mix`, "a");
+      link(`${prefix}_tick`, "out", `${prefix}_tick_hp`, "in");
+      link(`${prefix}_tick_hp`, "out", `${prefix}_tick_lp`, "in");
+      link(`${prefix}_tick_lp`, "out", `${prefix}_mix`, "b");
+      link(`${prefix}_mix`, "out", `${prefix}_delay`, "in");
     }
 
     const steps = [
-      { asset: "gravelStones01", level: 0.95, pitch: 1.0, start: 0.0, highpass: 620, lowpass: 14500, delay: 0.03 },
-      { asset: "gravelRpgStones04", level: 0.82, pitch: 2.1, start: 0.02, highpass: 720, lowpass: 13800, delay: 0.19 },
-      { asset: "gravelStones02", level: 0.76, pitch: -0.8, start: 0.04, highpass: 760, lowpass: 12600, delay: 0.36 },
-      { asset: "gravelRpgStones01", level: 0.66, pitch: 1.5, start: 0.0, highpass: 820, lowpass: 11200, delay: 0.53 },
-      { asset: "gravelStones03", level: 0.52, pitch: 3.2, start: 0.01, highpass: 900, lowpass: 9300, delay: 0.73 },
-      { asset: "gravelRpgStones02", level: 0.40, pitch: -1.2, start: 0.03, highpass: 980, lowpass: 7600, delay: 0.97 },
-      { asset: "gravelStones01", level: 0.31, pitch: 4.8, start: 0.05, highpass: 1100, lowpass: 6100, delay: 1.25 },
-      { asset: "gravelRpgStones04", level: 0.22, pitch: 3.6, start: 0.06, highpass: 1220, lowpass: 5000, delay: 1.57 },
-      { asset: "gravelStones02", level: 0.16, pitch: 5.2, start: 0.08, highpass: 1350, lowpass: 4200, delay: 1.93 },
+      { seed: 7011, delay: 0.025, duration: 0.18, lowpass: 14800, rubDensity: 68, rubDecay: 0.018, rubTone: 3400, rubSpread: 0.72, rubLevel: 0.84, rubHighpass: 520, rubMix: 0.95, tickDensity: 118, tickDecay: 0.007, tickTone: 8800, tickSpread: 0.86, tickLevel: 0.42, tickHighpass: 1800, tickLowpass: 15000, tickMix: 0.48 },
+      { seed: 7023, delay: 0.185, duration: 0.16, lowpass: 14000, rubDensity: 74, rubDecay: 0.016, rubTone: 3900, rubSpread: 0.74, rubLevel: 0.78, rubHighpass: 600, rubMix: 0.86, tickDensity: 132, tickDecay: 0.006, tickTone: 9600, tickSpread: 0.90, tickLevel: 0.38, tickHighpass: 1950, tickLowpass: 14500, tickMix: 0.46 },
+      { seed: 7037, delay: 0.355, duration: 0.16, lowpass: 12800, rubDensity: 62, rubDecay: 0.017, rubTone: 3600, rubSpread: 0.78, rubLevel: 0.68, rubHighpass: 690, rubMix: 0.76, tickDensity: 125, tickDecay: 0.006, tickTone: 9100, tickSpread: 0.88, tickLevel: 0.32, tickHighpass: 2100, tickLowpass: 13200, tickMix: 0.43 },
+      { seed: 7051, delay: 0.535, duration: 0.15, lowpass: 11200, rubDensity: 66, rubDecay: 0.015, rubTone: 4100, rubSpread: 0.76, rubLevel: 0.58, rubHighpass: 760, rubMix: 0.66, tickDensity: 116, tickDecay: 0.005, tickTone: 10400, tickSpread: 0.92, tickLevel: 0.28, tickHighpass: 2250, tickLowpass: 11800, tickMix: 0.38 },
+      { seed: 7069, delay: 0.735, duration: 0.14, lowpass: 9400, rubDensity: 58, rubDecay: 0.014, rubTone: 4300, rubSpread: 0.80, rubLevel: 0.46, rubHighpass: 860, rubMix: 0.55, tickDensity: 108, tickDecay: 0.005, tickTone: 9900, tickSpread: 0.92, tickLevel: 0.23, tickHighpass: 2400, tickLowpass: 10000, tickMix: 0.33 },
+      { seed: 7087, delay: 0.970, duration: 0.13, lowpass: 7600, rubDensity: 54, rubDecay: 0.013, rubTone: 3800, rubSpread: 0.82, rubLevel: 0.34, rubHighpass: 980, rubMix: 0.43, tickDensity: 96, tickDecay: 0.004, tickTone: 8600, tickSpread: 0.94, tickLevel: 0.18, tickHighpass: 2600, tickLowpass: 8200, tickMix: 0.28 },
+      { seed: 7103, delay: 1.255, duration: 0.12, lowpass: 6200, rubDensity: 48, rubDecay: 0.012, rubTone: 3600, rubSpread: 0.84, rubLevel: 0.25, rubHighpass: 1100, rubMix: 0.32, tickDensity: 82, tickDecay: 0.004, tickTone: 7800, tickSpread: 0.94, tickLevel: 0.13, tickHighpass: 2750, tickLowpass: 6600, tickMix: 0.22 },
+      { seed: 7121, delay: 1.585, duration: 0.10, lowpass: 5000, rubDensity: 42, rubDecay: 0.011, rubTone: 3300, rubSpread: 0.86, rubLevel: 0.18, rubHighpass: 1240, rubMix: 0.24, tickDensity: 70, tickDecay: 0.004, tickTone: 7000, tickSpread: 0.95, tickLevel: 0.09, tickHighpass: 2900, tickLowpass: 5400, tickMix: 0.16 },
+      { seed: 7139, delay: 1.940, duration: 0.09, lowpass: 4100, rubDensity: 36, rubDecay: 0.010, rubTone: 3000, rubSpread: 0.88, rubLevel: 0.12, rubHighpass: 1380, rubMix: 0.16, tickDensity: 58, tickDecay: 0.003, tickTone: 6100, tickSpread: 0.96, tickLevel: 0.06, tickHighpass: 3100, tickLowpass: 4500, tickMix: 0.1 },
     ];
 
     steps.forEach((cfg, i) => {
-      const col = i < 5 ? 70 : 910;
-      const row = i < 5 ? 95 + i * 245 : 95 + (i - 5) * 245;
+      const col = i < 5 ? 70 : 950;
+      const row = i < 5 ? 80 + i * 280 : 80 + (i - 5) * 280;
       addDryStep(i + 1, col, row, cfg);
     });
 
-    add(makeNode("mixer", 1600, 150, { levelA: 1, levelB: 0.92, levelC: 0.84, levelD: 0.76 }, "mix_near"));
-    add(makeNode("mixer", 1600, 420, { levelA: 0.66, levelB: 0.56, levelC: 0.46, levelD: 0.36 }, "mix_mid"));
-    add(makeNode("mixer", 1600, 690, { levelA: 0.3, levelB: 0, levelC: 0, levelD: 0 }, "mix_far"));
-    add(makeNode("mixer", 1840, 410, { levelA: 1, levelB: 1, levelC: 1, levelD: 0 }, "mix_all"));
-    add(makeNode("distortion", 2050, 410, { drive: 1.08, tone: 13000, mix: 0.03 }, "dry_edge"));
-    add(makeNode("output", 2200, 410, { master: 0.94, normalize: true }, "out"));
+    add(makeNode("mixer", 1780, 160, { levelA: 1, levelB: 0.92, levelC: 0.82, levelD: 0.72 }, "mix_near"));
+    add(makeNode("mixer", 1780, 430, { levelA: 0.58, levelB: 0.46, levelC: 0.34, levelD: 0.24 }, "mix_mid"));
+    add(makeNode("mixer", 1780, 700, { levelA: 0.18, levelB: 0, levelC: 0, levelD: 0 }, "mix_far"));
+    add(makeNode("mixer", 1970, 430, { levelA: 1, levelB: 1, levelC: 1, levelD: 0 }, "mix_all"));
+    add(makeNode("distortion", 2145, 430, { drive: 1.04, tone: 14200, mix: 0.025 }, "dry_edge"));
+    add(makeNode("output", 2225, 670, { master: 0.94, normalize: true }, "out"));
 
     link("gravel1_delay", "out", "mix_near", "a");
     link("gravel2_delay", "out", "mix_near", "b");
@@ -503,7 +514,7 @@
       version: 1,
       length: 2.5,
       sampleRate: 44100,
-      view: { x: 42, y: 30, scale: 0.56 },
+      view: { x: 34, y: 36, scale: 0.44 },
       nodes,
       connections,
     };
@@ -636,7 +647,7 @@
   const presets = {
     "木の足音": buildPresetFootstep,
     "木床歩行（リアル）": buildPresetWoodFloorWalkReal,
-    "砂利逃走（乾き素材）": buildPresetGravelEscapeDryMaterial,
+    "砂利逃走（乾き生成）": buildPresetGravelEscapeDryGenerated,
     "鍵束": buildPresetKeyring,
     "木片落下": buildPresetWoodChip,
     "裏口の物音": buildPresetBackdoor,
@@ -711,18 +722,11 @@
 
   function loadPreset(name) {
     state = cloneProject(presets[name]());
-    sampleStore.clear();
     selectedNodeId = null;
     els.presetSelect.value = name;
     updateSerialFromState();
     syncControls();
     renderUI();
-    const assetNodes = state.nodes.filter((node) => node.type === "sample" && node.params?.asset);
-    if (assetNodes.length > 0) {
-      setStatus(`${name}の素材を読み込み中...`);
-      preloadProjectSamples(name);
-      return;
-    }
     scheduleRender(true);
     setStatus(`${name}を読み込みました`);
   }
@@ -888,33 +892,6 @@
       return wrap;
     }
 
-    if (param.type === "file") {
-      if (node.params.asset && sampleAssets[node.params.asset]) {
-        const assetLabel = document.createElement("label");
-        assetLabel.className = "asset-label";
-        assetLabel.textContent = `内蔵: ${sampleAssets[node.params.asset].label}`;
-        wrap.appendChild(assetLabel);
-      }
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "audio/*";
-      input.addEventListener("change", async () => {
-        const file = input.files && input.files[0];
-        if (!file) return;
-        await loadSampleForNode(node, file);
-        renderUI();
-        scheduleRender(true);
-      });
-      wrap.appendChild(input);
-      if (node.fileName) {
-        const labelFile = document.createElement("label");
-        labelFile.textContent = node.fileName;
-        labelFile.style.marginTop = "5px";
-        wrap.appendChild(labelFile);
-      }
-      return wrap;
-    }
-
     const row = document.createElement("div");
     row.className = "row";
     const range = document.createElement("input");
@@ -953,7 +930,6 @@
   function removeNode(id) {
     state.nodes = state.nodes.filter((n) => n.id !== id);
     state.connections = state.connections.filter((c) => c.from !== id && c.to !== id);
-    sampleStore.delete(id);
     selectedNodeId = null;
     renderUI();
     scheduleRender();
@@ -1173,56 +1149,6 @@
     document.removeEventListener("pointermove", onPan);
   }
 
-  async function loadSampleForNode(node, file) {
-    if (!audioCtx) audioCtx = new AudioContext();
-    const ab = await file.arrayBuffer();
-    const decoded = await audioCtx.decodeAudioData(ab.slice(0));
-    const channels = decoded.numberOfChannels;
-    const len = decoded.length;
-    const mono = new Float32Array(len);
-    for (let ch = 0; ch < channels; ch++) {
-      const data = decoded.getChannelData(ch);
-      for (let i = 0; i < len; i++) mono[i] += data[i] / channels;
-    }
-    sampleStore.set(node.id, { data: mono, sampleRate: decoded.sampleRate, name: file.name });
-    node.fileName = file.name;
-    setStatus(`サンプルを読み込みました: ${file.name}`);
-  }
-
-  async function loadAssetSampleForNode(node) {
-    const asset = sampleAssets[node.params?.asset];
-    if (!asset) return false;
-    if (!audioCtx) audioCtx = new AudioContext();
-    const res = await fetch(asset.url);
-    if (!res.ok) throw new Error(`${asset.label}を読み込めません (${res.status})`);
-    const ab = await res.arrayBuffer();
-    const decoded = await audioCtx.decodeAudioData(ab.slice(0));
-    const channels = decoded.numberOfChannels;
-    const len = decoded.length;
-    const mono = new Float32Array(len);
-    for (let ch = 0; ch < channels; ch++) {
-      const data = decoded.getChannelData(ch);
-      for (let i = 0; i < len; i++) mono[i] += data[i] / channels;
-    }
-    sampleStore.set(node.id, { data: mono, sampleRate: decoded.sampleRate, name: asset.label });
-    node.fileName = asset.label;
-    return true;
-  }
-
-  async function preloadProjectSamples(presetName = "プロジェクト") {
-    const currentState = state;
-    const sampleNodes = state.nodes.filter((node) => node.type === "sample" && node.params?.asset);
-    try {
-      await Promise.all(sampleNodes.map((node) => loadAssetSampleForNode(node)));
-      if (state !== currentState) return;
-      renderUI();
-      scheduleRender(true);
-      setStatus(`${presetName}を読み込みました (${sampleNodes.length}素材)`);
-    } catch (err) {
-      if (state === currentState) setStatus(`素材読み込みエラー: ${err.message}`);
-    }
-  }
-
   function scheduleRender(force = false) {
     rendered = null;
     if (!els.autoCheck.checked && !force) {
@@ -1270,8 +1196,8 @@
       case "noise":
         out = dspNoise(params, n);
         break;
-      case "sample":
-        out = dspSample(node, params, n, sr);
+      case "grains":
+        out = dspGrains(params, n, sr);
         break;
       case "lfo":
         out = dspLfo(params, n, sr);
@@ -1436,6 +1362,35 @@
     return out;
   }
 
+  function dspGrains(params, n, sr) {
+    const random = mulberry32(Number(params.seed || 1));
+    const out = new Float32Array(n);
+    const duration = Math.max(0.001, Number(params.duration || 0.1));
+    const limit = Math.min(n, secToSamples(duration, sr));
+    const density = Math.max(1, Number(params.density || 60));
+    const decay = Math.max(0.0005, Number(params.decay || 0.01));
+    const tone = clamp(Number(params.tone || 6000), 100, sr * 0.45);
+    const spread = clamp(Number(params.spread || 0.5), 0, 1);
+    const level = Number(params.level || 1);
+    const count = Math.max(1, Math.round(duration * density));
+    for (let e = 0; e < count; e++) {
+      const start = Math.floor(random() * limit);
+      const grainDecay = decay * (0.55 + random() * 1.35);
+      const grainLen = Math.min(n - start, Math.max(8, Math.round(grainDecay * sr * 7)));
+      const freq = tone * (1 - spread * 0.55 + random() * spread * 1.3);
+      const amp = level * (0.25 + random() * 0.75) / Math.sqrt(count * 0.35);
+      let phase = random() * TAU;
+      for (let j = 0; j < grainLen; j++) {
+        const t = j / sr;
+        const env = Math.exp(-t / grainDecay) * (1 - j / grainLen);
+        const grit = random() * 2 - 1;
+        phase += TAU * freq / sr;
+        out[start + j] += (Math.sin(phase) * 0.42 + grit * 0.58) * amp * env;
+      }
+    }
+    return out;
+  }
+
   function dspEnvelope(node, params, cache, stack, n, sr) {
     const inputConnected = hasInput(node.id, "in");
     const input = inputConnected ? getInput(node.id, "in", cache, stack, n, sr) : null;
@@ -1594,26 +1549,6 @@
     return out;
   }
 
-  function dspSample(node, params, n, sr) {
-    const item = sampleStore.get(node.id);
-    const out = new Float32Array(n);
-    if (!item) return out;
-    const data = item.data;
-    const start = secToSamples(Number(params.start || 0), item.sampleRate);
-    const pitch = Math.pow(2, Number(params.pitch || 0) / 12);
-    const step = (item.sampleRate / sr) * pitch;
-    const level = Number(params.level || 1);
-    const reverse = Boolean(params.reverse);
-    for (let i = 0; i < n; i++) {
-      const pos = reverse ? data.length - 1 - start - i * step : start + i * step;
-      if (pos < 0 || pos >= data.length - 1) break;
-      const a = Math.floor(pos);
-      const f = pos - a;
-      out[i] = (data[a] * (1 - f) + data[a + 1] * f) * level;
-    }
-    return out;
-  }
-
   function dspOutput(input, params) {
     const out = new Float32Array(input.length);
     const master = Number(params.master || 1);
@@ -1752,11 +1687,7 @@
   }
 
   function exportProject() {
-    const project = cloneProject(state);
-    for (const node of project.nodes) {
-      if (node.type === "sample") node.fileName = node.fileName || "";
-    }
-    return project;
+    return cloneProject(state);
   }
 
   function saveProject() {
@@ -1778,20 +1709,12 @@
         x: Number(n.x) || 0,
         y: Number(n.y) || 0,
         params: { ...defaultsFor(nodeDefs[n.type] ? n.type : "output"), ...(n.params || {}) },
-        fileName: n.fileName || "",
       })),
       connections: Array.isArray(project.connections) ? project.connections.map((c) => ({ ...c })) : [],
     };
-    sampleStore.clear();
     updateSerialFromState();
     syncControls();
     renderUI();
-    const assetNodes = state.nodes.filter((node) => node.type === "sample" && node.params?.asset);
-    if (assetNodes.length > 0) {
-      setStatus("プロジェクトの素材を読み込み中...");
-      preloadProjectSamples("プロジェクト");
-      return;
-    }
     scheduleRender(true);
     setStatus("プロジェクトを開きました");
   }
@@ -1810,7 +1733,6 @@
     els.loadBtn.addEventListener("click", () => loadPreset(els.presetSelect.value));
     els.clearBtn.addEventListener("click", () => {
       state = blankState();
-      sampleStore.clear();
       selectedNodeId = null;
       syncControls();
       renderUI();
