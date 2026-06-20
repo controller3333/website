@@ -317,6 +317,110 @@
     };
   }
 
+  function buildPresetWoodFloorWalkReal() {
+    nodeSerial = 1;
+    const nodes = [];
+    const connections = [];
+    const add = (node) => {
+      nodes.push(node);
+      return node;
+    };
+    const link = (from, fromPort, to, toPort) => {
+      connections.push({ from, fromPort, to, toPort });
+    };
+
+    function addStep(prefix, x, y, delay, seed, cfg) {
+      add(makeNode("noise", x, y, { color: "brown", seed }, `${prefix}_body_noise`));
+      add(makeNode("filter", x + 205, y, { type: "lowpass", cutoff: cfg.bodyCutoff, q: 0.42 }, `${prefix}_body_filter`));
+      add(makeNode("envelope", x + 410, y, { attack: 0.001, decay: cfg.bodyDecay, sustain: 0, release: 0.035, gate: 0.038 }, `${prefix}_body_env`));
+
+      add(makeNode("sweep", x, y + 160, { start: cfg.knockSweep, end: -42, time: 0.12, curve: "exp" }, `${prefix}_knock_sweep`));
+      add(makeNode("oscillator", x + 205, y + 160, { wave: "tri", freq: cfg.knockFreq, fmAmount: 1, phase: cfg.phase }, `${prefix}_knock_osc`));
+      add(makeNode("envelope", x + 410, y + 160, { attack: 0.001, decay: cfg.knockDecay, sustain: 0, release: 0.03, gate: 0.045 }, `${prefix}_knock_env`));
+
+      add(makeNode("noise", x, y + 320, { color: cfg.scrapeColor, seed: seed + 101 }, `${prefix}_scrape_noise`));
+      add(makeNode("filter", x + 205, y + 320, { type: "bandpass", cutoff: cfg.scrapeCutoff, q: 0.75 }, `${prefix}_scrape_filter`));
+      add(makeNode("envelope", x + 410, y + 320, { attack: 0.018, decay: cfg.scrapeDecay, sustain: 0.04, release: 0.055, gate: 0.078 }, `${prefix}_scrape_env`));
+
+      add(makeNode("sweep", x, y + 480, { start: 0, end: cfg.creakDrop, time: 0.23, curve: "log" }, `${prefix}_creak_sweep`));
+      add(makeNode("oscillator", x + 205, y + 480, { wave: "sine", freq: cfg.creakFreq, fmAmount: 1, phase: cfg.phase + 0.17 }, `${prefix}_creak_osc`));
+      add(makeNode("envelope", x + 410, y + 480, { attack: 0.024, decay: cfg.creakDecay, sustain: 0, release: 0.07, gate: 0.15 }, `${prefix}_creak_env`));
+
+      add(makeNode("mixer", x + 640, y + 150, {
+        levelA: cfg.bodyLevel,
+        levelB: cfg.knockLevel,
+        levelC: cfg.scrapeLevel,
+        levelD: cfg.creakLevel,
+      }, `${prefix}_mix`));
+      add(makeNode("delay", x + 845, y + 195, { time: delay, feedback: 0, mix: 1 }, `${prefix}_delay`));
+
+      link(`${prefix}_body_noise`, "out", `${prefix}_body_filter`, "in");
+      link(`${prefix}_body_filter`, "out", `${prefix}_body_env`, "in");
+      link(`${prefix}_body_env`, "out", `${prefix}_mix`, "a");
+      link(`${prefix}_knock_sweep`, "out", `${prefix}_knock_osc`, "fm");
+      link(`${prefix}_knock_osc`, "out", `${prefix}_knock_env`, "in");
+      link(`${prefix}_knock_env`, "out", `${prefix}_mix`, "b");
+      link(`${prefix}_scrape_noise`, "out", `${prefix}_scrape_filter`, "in");
+      link(`${prefix}_scrape_filter`, "out", `${prefix}_scrape_env`, "in");
+      link(`${prefix}_scrape_env`, "out", `${prefix}_mix`, "c");
+      link(`${prefix}_creak_sweep`, "out", `${prefix}_creak_osc`, "fm");
+      link(`${prefix}_creak_osc`, "out", `${prefix}_creak_env`, "in");
+      link(`${prefix}_creak_env`, "out", `${prefix}_mix`, "d");
+      link(`${prefix}_mix`, "out", `${prefix}_delay`, "in");
+    }
+
+    addStep("step1", 70, 80, 0.001, 4112, {
+      bodyCutoff: 520, bodyDecay: 0.11, bodyLevel: 0.72,
+      knockFreq: 92, knockSweep: 26, knockDecay: 0.12, knockLevel: 0.46,
+      scrapeColor: "pink", scrapeCutoff: 1850, scrapeDecay: 0.13, scrapeLevel: 0.24,
+      creakFreq: 760, creakDrop: -230, creakDecay: 0.21, creakLevel: 0.12,
+      phase: 0.07,
+    });
+    addStep("step2", 70, 700, 0.445, 5231, {
+      bodyCutoff: 460, bodyDecay: 0.095, bodyLevel: 0.63,
+      knockFreq: 108, knockSweep: 18, knockDecay: 0.105, knockLevel: 0.40,
+      scrapeColor: "white", scrapeCutoff: 2300, scrapeDecay: 0.11, scrapeLevel: 0.19,
+      creakFreq: 845, creakDrop: -310, creakDecay: 0.24, creakLevel: 0.16,
+      phase: 0.32,
+    });
+    addStep("step3", 70, 1320, 0.895, 6488, {
+      bodyCutoff: 560, bodyDecay: 0.12, bodyLevel: 0.76,
+      knockFreq: 88, knockSweep: 34, knockDecay: 0.135, knockLevel: 0.50,
+      scrapeColor: "pink", scrapeCutoff: 2050, scrapeDecay: 0.14, scrapeLevel: 0.22,
+      creakFreq: 705, creakDrop: -205, creakDecay: 0.19, creakLevel: 0.11,
+      phase: 0.18,
+    });
+    addStep("step4", 70, 1940, 1.360, 7864, {
+      bodyCutoff: 430, bodyDecay: 0.10, bodyLevel: 0.61,
+      knockFreq: 116, knockSweep: 14, knockDecay: 0.10, knockLevel: 0.38,
+      scrapeColor: "white", scrapeCutoff: 2600, scrapeDecay: 0.12, scrapeLevel: 0.20,
+      creakFreq: 920, creakDrop: -360, creakDecay: 0.25, creakLevel: 0.18,
+      phase: 0.41,
+    });
+
+    add(makeNode("mixer", 1180, 520, { levelA: 1, levelB: 0.92, levelC: 1, levelD: 0.9 }, "walk_mix"));
+    add(makeNode("distortion", 1390, 520, { drive: 1.22, tone: 6200, mix: 0.08 }, "soft_sat"));
+    add(makeNode("reverb", 1600, 520, { room: 0.18, damp: 0.78, mix: 0.09 }, "room_tail"));
+    add(makeNode("output", 1810, 520, { master: 0.9, normalize: true }, "out"));
+
+    link("step1_delay", "out", "walk_mix", "a");
+    link("step2_delay", "out", "walk_mix", "b");
+    link("step3_delay", "out", "walk_mix", "c");
+    link("step4_delay", "out", "walk_mix", "d");
+    link("walk_mix", "out", "soft_sat", "in");
+    link("soft_sat", "out", "room_tail", "in");
+    link("room_tail", "out", "out", "in");
+
+    return {
+      version: 1,
+      length: 1.95,
+      sampleRate: 44100,
+      view: { x: 150, y: 40, scale: 0.62 },
+      nodes,
+      connections,
+    };
+  }
+
   function buildPresetKeyring() {
     nodeSerial = 1;
     const nodes = [
@@ -443,6 +547,7 @@
 
   const presets = {
     "木の足音": buildPresetFootstep,
+    "木床歩行（リアル）": buildPresetWoodFloorWalkReal,
     "鍵束": buildPresetKeyring,
     "木片落下": buildPresetWoodChip,
     "裏口の物音": buildPresetBackdoor,
