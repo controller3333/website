@@ -108,6 +108,75 @@
       wire(mix, 'out', out, 'in');
     }),
 
+    '木の床を歩く足音': build(({ add, wire }) => {
+      function makeStep(index, cfg) {
+        const y = 40 + index * 450;
+        const noise = add('noise', 20, y + 60, { color: 'white', seed: cfg.seed });
+        const knockFilter = add('filter', 280, y, { type: 'bandpass', cutoff: cfg.knockHz, q: cfg.q, cvAmount: 0 });
+        const knockEnv = add('envelope', 540, y, {
+          attack: 0.001,
+          decay: cfg.knockDecay,
+          sustain: 0,
+          release: 0.03,
+          gate: cfg.knockDecay + 0.01,
+        });
+        const clackFilter = add('filter', 280, y + 130, { type: 'bandpass', cutoff: cfg.clickHz, q: 2.0, cvAmount: 0 });
+        const clackEnv = add('envelope', 540, y + 130, {
+          attack: 0.0005,
+          decay: 0.016,
+          sustain: 0,
+          release: 0.012,
+          gate: 0.02,
+        });
+        const thump = add('oscillator', 280, y + 280, {
+          wave: 'sine',
+          freq: cfg.thumpHz,
+          fmAmount: 0,
+          pmAmount: 0,
+          voices: 1,
+        });
+        const thumpEnv = add('envelope', 540, y + 280, {
+          attack: 0.001,
+          decay: cfg.thumpDecay,
+          sustain: 0,
+          release: 0.03,
+          gate: 0.08,
+        });
+        const mix = add('mixer', 815, y + 110, {
+          levelA: cfg.knockLevel,
+          levelB: cfg.clickLevel,
+          levelC: cfg.thumpLevel,
+          levelD: 0,
+        });
+        const shift = add('timeshift', 1060, y + 110, { offset: cfg.time });
+        const pan = add('panner', 1300, y + 110, { pan: cfg.pan, cvAmount: 0, spread: 3 });
+
+        wire(noise, 'out', knockFilter, 'in');
+        wire(knockFilter, 'out', knockEnv, 'in');
+        wire(noise, 'out', clackFilter, 'in');
+        wire(clackFilter, 'out', clackEnv, 'in');
+        wire(thump, 'out', thumpEnv, 'in');
+        wire(knockEnv, 'out', mix, 'a');
+        wire(clackEnv, 'out', mix, 'b');
+        wire(thumpEnv, 'out', mix, 'c');
+        wire(mix, 'out', shift, 'in');
+        wire(shift, 'out', pan, 'in');
+        return pan;
+      }
+
+      const steps = [
+        { time: 0.10, pan: -0.30, seed: 21, knockHz: 320, q: 4.5, clickHz: 1300, thumpHz: 95, knockDecay: 0.060, thumpDecay: 0.070, knockLevel: 1.0, clickLevel: 0.28, thumpLevel: 0.75 },
+        { time: 0.61, pan: 0.33, seed: 37, knockHz: 280, q: 5.0, clickHz: 1150, thumpHz: 88, knockDecay: 0.065, thumpDecay: 0.075, knockLevel: 0.95, clickLevel: 0.24, thumpLevel: 0.78 },
+        { time: 1.16, pan: -0.25, seed: 53, knockHz: 300, q: 4.2, clickHz: 1450, thumpHz: 100, knockDecay: 0.055, thumpDecay: 0.065, knockLevel: 1.0, clickLevel: 0.30, thumpLevel: 0.72 },
+        { time: 1.69, pan: 0.29, seed: 66, knockHz: 350, q: 4.8, clickHz: 1250, thumpHz: 91, knockDecay: 0.062, thumpDecay: 0.072, knockLevel: 0.92, clickLevel: 0.26, thumpLevel: 0.70 },
+      ].map(makeStep);
+
+      const mix = add('mixer', 1580, 470, { levelA: 1.0, levelB: 0.88, levelC: 0.97, levelD: 0.8 });
+      const out = add('output', 1840, 490, { gain: 0.9, normalize: true });
+      steps.forEach((node, index) => wire(node, 'out', mix, ['a', 'b', 'c', 'd'][index]));
+      wire(mix, 'out', out, 'in');
+    }),
+
     'UIブリップ': build(({ add, wire }) => {
       const osc = add('oscillator', 40, 60, { wave: 'sine', freq: 1200, fmAmount: 0 });
       const env = add('envelope', 340, 60, { attack: 0.002, decay: 0.04, sustain: 0, release: 0.02, gate: 0.04 });

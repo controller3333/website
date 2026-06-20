@@ -4,7 +4,9 @@
 
   const $ = id => document.getElementById(id);
 
-  const INITIAL_PRESET = 'レーザーショット';
+  const DEFAULT_PRESET = 'レーザーショット';
+  const requestedPreset = new URLSearchParams(window.location.search).get('preset');
+  const INITIAL_PRESET = PRESETS[requestedPreset] ? requestedPreset : DEFAULT_PRESET;
   const CATEGORY_LABELS = {
     Source: '音源',
     Modulation: '変調',
@@ -12,6 +14,9 @@
     Combiner: '合成',
     Stereo: 'ステレオ',
     Output: '出力',
+  };
+  const PRESET_SETTINGS = {
+    '木の床を歩く足音': { duration: 2.2 },
   };
 
   let graph = PRESETS[INITIAL_PRESET]();
@@ -147,14 +152,22 @@
       const o = document.createElement('option');
       o.value = name; o.textContent = name; sel.appendChild(o);
     }
+    sel.value = INITIAL_PRESET;
   }
   function loadPreset(name) {
     if (!PRESETS[name]) return;
     graph = PRESETS[name]();
     editor.rebuild(graph);
+    applyPresetSettings(name);
     refreshPaletteDisabled();
     render();
     status('プリセットを読み込みました: ' + name);
+  }
+
+  function applyPresetSettings(name) {
+    const presetSettings = PRESET_SETTINGS[name];
+    if (!presetSettings) return;
+    if (presetSettings.duration) $('in-duration').value = presetSettings.duration;
   }
 
   // ---- save / open ----
@@ -203,6 +216,7 @@
     editor = new NodeEditor({ graph, onChange: scheduleRender });
     buildPalette();
     buildPresetSelect();
+    applyPresetSettings(INITIAL_PRESET);
 
     $('btn-play').addEventListener('click', () => { engine.isPlaying ? stop() : play(); });
     $('btn-stop').addEventListener('click', stop);
