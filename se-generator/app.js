@@ -578,6 +578,7 @@
     close.className = "node-close";
     close.type = "button";
     close.textContent = "×";
+    close.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     close.addEventListener("click", (ev) => {
       ev.stopPropagation();
       removeNode(node.id);
@@ -753,6 +754,7 @@
 
   function startNodeDrag(ev, node) {
     if (ev.button !== 0) return;
+    if (ev.target.closest("button")) return;
     const p = clientToWorld(ev.clientX, ev.clientY);
     drag = { node, dx: p.x - node.x, dy: p.y - node.y };
     ev.currentTarget.setPointerCapture(ev.pointerId);
