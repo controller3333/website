@@ -1160,7 +1160,7 @@
       try {
         rendered = renderProject();
         drawWaveform(rendered.samples);
-        setStatus(`${rendered.samples.length}サンプルを生成しました (${rendered.sampleRate} Hz)`);
+        setStatus(`${rendered.samples.length}点の音声データを生成しました (${rendered.sampleRate} Hz)`);
       } catch (err) {
         setStatus(`生成エラー: ${err.message}`);
       }
@@ -1742,7 +1742,7 @@
     els.renderBtn.addEventListener("click", () => {
       rendered = renderProject();
       drawWaveform(rendered.samples);
-      setStatus(`${rendered.samples.length}サンプルを生成しました`);
+      setStatus(`${rendered.samples.length}点の音声データを生成しました`);
     });
     els.playBtn.addEventListener("click", () => {
       try {
