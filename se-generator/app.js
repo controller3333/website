@@ -884,32 +884,71 @@
   function bindWorkspace() {
     els.workspace.addEventListener("contextmenu", (ev) => ev.preventDefault());
     els.workspace.addEventListener("pointerdown", (ev) => {
-      if (ev.target !== els.workspace && ev.target !== els.world && ev.target !== els.wires) return;
-      if (ev.button !== 1 && ev.button !== 2) return;
-      pan = {
-        x: ev.clientX,
-        y: ev.clientY,
-        viewX: state.view.x,
-        viewY: state.view.y,
-      };
-      els.workspace.classList.add("panning");
-      document.addEventListener("pointermove", onPan);
-      document.addEventListener("pointerup", endPan, { once: true });
+      if (!shouldStartPan(ev)) return;
+      startPan(ev);
     });
     els.workspace.addEventListener("wheel", (ev) => {
       ev.preventDefault();
-      const old = state.view.scale;
-      const next = clamp(old * (ev.deltaY < 0 ? 1.08 : 0.925), 0.35, 2.4);
-      const rect = els.workspace.getBoundingClientRect();
-      const mx = ev.clientX - rect.left;
-      const my = ev.clientY - rect.top;
-      const wx = (mx - state.view.x) / old;
-      const wy = (my - state.view.y) / old;
-      state.view.scale = next;
-      state.view.x = mx - wx * next;
-      state.view.y = my - wy * next;
+      const delta = wheelDeltaPixels(ev);
+      if (ev.ctrlKey || ev.metaKey) {
+        zoomAt(ev, delta.y);
+      } else {
+        const horizontal = ev.shiftKey && delta.x === 0 ? delta.y : delta.x;
+        const vertical = ev.shiftKey && delta.x === 0 ? 0 : delta.y;
+        state.view.x -= horizontal;
+        state.view.y -= vertical;
+      }
       applyView();
     }, { passive: false });
+  }
+
+  function isBackgroundTarget(target) {
+    return target === els.workspace
+      || target === els.world
+      || target === els.nodes
+      || target === els.wires
+      || target.classList?.contains("wire");
+  }
+
+  function shouldStartPan(ev) {
+    if (ev.button === 1 || ev.button === 2) return true;
+    return ev.button === 0 && isBackgroundTarget(ev.target);
+  }
+
+  function startPan(ev) {
+    ev.preventDefault();
+    pan = {
+      x: ev.clientX,
+      y: ev.clientY,
+      viewX: state.view.x,
+      viewY: state.view.y,
+    };
+    els.workspace.classList.add("panning");
+    document.addEventListener("pointermove", onPan);
+    document.addEventListener("pointerup", endPan, { once: true });
+  }
+
+  function wheelDeltaPixels(ev) {
+    const unit = ev.deltaMode === WheelEvent.DOM_DELTA_LINE ? 18
+      : ev.deltaMode === WheelEvent.DOM_DELTA_PAGE ? 240
+        : 1;
+    return {
+      x: ev.deltaX * unit,
+      y: ev.deltaY * unit,
+    };
+  }
+
+  function zoomAt(ev, deltaY) {
+    const old = state.view.scale;
+    const next = clamp(old * (deltaY < 0 ? 1.08 : 0.925), 0.35, 2.4);
+    const rect = els.workspace.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+    const wx = (mx - state.view.x) / old;
+    const wy = (my - state.view.y) / old;
+    state.view.scale = next;
+    state.view.x = mx - wx * next;
+    state.view.y = my - wy * next;
   }
 
   function onPan(ev) {

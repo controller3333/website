@@ -206,7 +206,7 @@ button:disabled {
   height: 100%;
   overflow: hidden;
   position: relative;
-  cursor: default;
+  cursor: grab;
   background-color: #0c1119;
   background-image:
     radial-gradient(circle, rgba(87, 106, 132, .18) 1px, transparent 1px);
