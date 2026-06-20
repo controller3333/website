@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プロシージャルSEジェネレーター</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">◢◣</span>
+      <span class="title">プロシージャルSEジェネレーター</span>
+    </div>
+    <div class="transport">
+      <button id="btn-play" class="btn primary" title="Space">▶ 再生</button>
+      <button id="btn-stop" class="btn">■ 停止</button>
+      <div class="sep"></div>
+      <label class="field">長さ
+        <input id="in-duration" type="number" min="0.05" max="10" step="0.05" value="1.0"> s
+      </label>
+      <label class="field">レート
+        <select id="in-samplerate">
+          <option value="44100">44.1k</option>
+          <option value="48000">48k</option>
+          <option value="22050">22k</option>
+        </select>
+      </label>
+      <label class="field check"><input id="in-loop" type="checkbox"> ループ</label>
+      <label class="field check"><input id="in-autorender" type="checkbox" checked> 自動</label>
+      <div class="sep"></div>
+      <label class="field">ピッチ±
+        <input id="in-vary" type="number" min="0" max="200" step="1" value="0"> ct
+      </label>
+      <button id="btn-dice" class="btn" title="ランダムに揺らして再生">🎲</button>
+      <div class="sep"></div>
+      <button id="btn-render" class="btn">⟳ 生成</button>
+      <button id="btn-export" class="btn">⬇ WAV</button>
+    </div>
+    <div class="rightbar">
+      <select id="preset-select" title="プリセット">
+        <option value="">— プリセット —</option>
+      </select>
+      <button id="btn-load-preset" class="btn">読込</button>
+      <div class="sep"></div>
+      <button id="btn-save" class="btn" title="グラフをJSONで保存">保存</button>
+      <button id="btn-open" class="btn" title="JSONグラフを開く">開く</button>
+      <button id="btn-clear" class="btn danger">消去</button>
+    </div>
+  </header>
+
+  <div id="body">
+    <aside id="palette">
+      <div class="palette-title">ノード</div>
+      <div id="palette-list"></div>
+      <div class="palette-hint">クリックで追加 / ポートをドラッグで接続 / 配線クリックで削除<br>ノードに重ねて <b>Ctrl+Space</b> でその地点の音を試聴
+    </aside>
+
+    <main id="canvas-wrap">
+      <div id="world">
+        <svg id="wires" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="nodes"></div>
+      </div>
+      <div id="canvas-hint">右クリックドラッグ または 空白ドラッグでパン / ホイールでズーム</div>
+    </main>
+  </div>
+
+  <footer id="bottombar">
+    <canvas id="scope" width="900" height="120"></canvas>
+    <div id="status">準備完了</div>
+  </footer>
+</div>
+
+<input id="file-input" type="file" accept="application/json" style="display:none">
+
+<script src="js/dsp.js"></script>
+<script src="js/graph.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/presets.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
