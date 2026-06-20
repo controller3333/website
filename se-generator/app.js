@@ -238,6 +238,15 @@
     },
   };
 
+  const sampleAssets = {
+    gravelStones01: { url: "./assets/sfx/gravel_stones_01.ogg", label: "砂利 石粒 01" },
+    gravelStones02: { url: "./assets/sfx/gravel_stones_02.ogg", label: "砂利 石粒 02" },
+    gravelStones03: { url: "./assets/sfx/gravel_stones_03.ogg", label: "砂利 石粒 03" },
+    gravelRpgStones01: { url: "./assets/sfx/gravel_rpg_stones_01.ogg", label: "砂利 乾き 01" },
+    gravelRpgStones02: { url: "./assets/sfx/gravel_rpg_stones_02.ogg", label: "砂利 乾き 02" },
+    gravelRpgStones04: { url: "./assets/sfx/gravel_rpg_stones_04.ogg", label: "砂利 乾き 04" },
+  };
+
   let state = null;
   let nodeSerial = 1;
   let selectedNodeId = null;
@@ -421,6 +430,85 @@
     };
   }
 
+  function buildPresetGravelEscapeDryMaterial() {
+    nodeSerial = 1;
+    const nodes = [];
+    const connections = [];
+    const add = (node) => {
+      nodes.push(node);
+      return node;
+    };
+    const link = (from, fromPort, to, toPort) => {
+      connections.push({ from, fromPort, to, toPort });
+    };
+
+    function addDryStep(index, x, y, cfg) {
+      const prefix = `gravel${index}`;
+      add(makeNode("sample", x, y, {
+        asset: cfg.asset,
+        level: cfg.level,
+        pitch: cfg.pitch,
+        start: cfg.start,
+        reverse: false,
+      }, `${prefix}_sample`));
+      add(makeNode("filter", x + 205, y, { type: "highpass", cutoff: cfg.highpass, q: 0.35 }, `${prefix}_dry_cut`));
+      add(makeNode("filter", x + 410, y, { type: "lowpass", cutoff: cfg.lowpass, q: 0.5 }, `${prefix}_distance`));
+      add(makeNode("delay", x + 615, y, { time: cfg.delay, feedback: 0, mix: 1 }, `${prefix}_delay`));
+      link(`${prefix}_sample`, "out", `${prefix}_dry_cut`, "in");
+      link(`${prefix}_dry_cut`, "out", `${prefix}_distance`, "in");
+      link(`${prefix}_distance`, "out", `${prefix}_delay`, "in");
+    }
+
+    const steps = [
+      { asset: "gravelStones01", level: 0.95, pitch: 1.0, start: 0.0, highpass: 620, lowpass: 14500, delay: 0.03 },
+      { asset: "gravelRpgStones04", level: 0.82, pitch: 2.1, start: 0.02, highpass: 720, lowpass: 13800, delay: 0.19 },
+      { asset: "gravelStones02", level: 0.76, pitch: -0.8, start: 0.04, highpass: 760, lowpass: 12600, delay: 0.36 },
+      { asset: "gravelRpgStones01", level: 0.66, pitch: 1.5, start: 0.0, highpass: 820, lowpass: 11200, delay: 0.53 },
+      { asset: "gravelStones03", level: 0.52, pitch: 3.2, start: 0.01, highpass: 900, lowpass: 9300, delay: 0.73 },
+      { asset: "gravelRpgStones02", level: 0.40, pitch: -1.2, start: 0.03, highpass: 980, lowpass: 7600, delay: 0.97 },
+      { asset: "gravelStones01", level: 0.31, pitch: 4.8, start: 0.05, highpass: 1100, lowpass: 6100, delay: 1.25 },
+      { asset: "gravelRpgStones04", level: 0.22, pitch: 3.6, start: 0.06, highpass: 1220, lowpass: 5000, delay: 1.57 },
+      { asset: "gravelStones02", level: 0.16, pitch: 5.2, start: 0.08, highpass: 1350, lowpass: 4200, delay: 1.93 },
+    ];
+
+    steps.forEach((cfg, i) => {
+      const col = i < 5 ? 70 : 910;
+      const row = i < 5 ? 95 + i * 245 : 95 + (i - 5) * 245;
+      addDryStep(i + 1, col, row, cfg);
+    });
+
+    add(makeNode("mixer", 1600, 150, { levelA: 1, levelB: 0.92, levelC: 0.84, levelD: 0.76 }, "mix_near"));
+    add(makeNode("mixer", 1600, 420, { levelA: 0.66, levelB: 0.56, levelC: 0.46, levelD: 0.36 }, "mix_mid"));
+    add(makeNode("mixer", 1600, 690, { levelA: 0.3, levelB: 0, levelC: 0, levelD: 0 }, "mix_far"));
+    add(makeNode("mixer", 1840, 410, { levelA: 1, levelB: 1, levelC: 1, levelD: 0 }, "mix_all"));
+    add(makeNode("distortion", 2050, 410, { drive: 1.08, tone: 13000, mix: 0.03 }, "dry_edge"));
+    add(makeNode("output", 2200, 410, { master: 0.94, normalize: true }, "out"));
+
+    link("gravel1_delay", "out", "mix_near", "a");
+    link("gravel2_delay", "out", "mix_near", "b");
+    link("gravel3_delay", "out", "mix_near", "c");
+    link("gravel4_delay", "out", "mix_near", "d");
+    link("gravel5_delay", "out", "mix_mid", "a");
+    link("gravel6_delay", "out", "mix_mid", "b");
+    link("gravel7_delay", "out", "mix_mid", "c");
+    link("gravel8_delay", "out", "mix_mid", "d");
+    link("gravel9_delay", "out", "mix_far", "a");
+    link("mix_near", "out", "mix_all", "a");
+    link("mix_mid", "out", "mix_all", "b");
+    link("mix_far", "out", "mix_all", "c");
+    link("mix_all", "out", "dry_edge", "in");
+    link("dry_edge", "out", "out", "in");
+
+    return {
+      version: 1,
+      length: 2.5,
+      sampleRate: 44100,
+      view: { x: 42, y: 30, scale: 0.56 },
+      nodes,
+      connections,
+    };
+  }
+
   function buildPresetKeyring() {
     nodeSerial = 1;
     const nodes = [
@@ -548,6 +636,7 @@
   const presets = {
     "木の足音": buildPresetFootstep,
     "木床歩行（リアル）": buildPresetWoodFloorWalkReal,
+    "砂利逃走（乾き素材）": buildPresetGravelEscapeDryMaterial,
     "鍵束": buildPresetKeyring,
     "木片落下": buildPresetWoodChip,
     "裏口の物音": buildPresetBackdoor,
@@ -624,9 +713,16 @@
     state = cloneProject(presets[name]());
     sampleStore.clear();
     selectedNodeId = null;
+    els.presetSelect.value = name;
     updateSerialFromState();
     syncControls();
     renderUI();
+    const assetNodes = state.nodes.filter((node) => node.type === "sample" && node.params?.asset);
+    if (assetNodes.length > 0) {
+      setStatus(`${name}の素材を読み込み中...`);
+      preloadProjectSamples(name);
+      return;
+    }
     scheduleRender(true);
     setStatus(`${name}を読み込みました`);
   }
@@ -793,6 +889,12 @@
     }
 
     if (param.type === "file") {
+      if (node.params.asset && sampleAssets[node.params.asset]) {
+        const assetLabel = document.createElement("label");
+        assetLabel.className = "asset-label";
+        assetLabel.textContent = `内蔵: ${sampleAssets[node.params.asset].label}`;
+        wrap.appendChild(assetLabel);
+      }
       const input = document.createElement("input");
       input.type = "file";
       input.accept = "audio/*";
@@ -997,13 +1099,13 @@
     els.workspace.addEventListener("wheel", (ev) => {
       ev.preventDefault();
       const delta = wheelDeltaPixels(ev);
-      if (ev.ctrlKey || ev.metaKey) {
-        zoomAt(ev, delta.y);
-      } else {
+      if (ev.shiftKey) {
         const horizontal = ev.shiftKey && delta.x === 0 ? delta.y : delta.x;
         const vertical = ev.shiftKey && delta.x === 0 ? 0 : delta.y;
         state.view.x -= horizontal;
         state.view.y -= vertical;
+      } else {
+        zoomAt(ev, delta.y);
       }
       applyView();
     }, { passive: false });
@@ -1085,6 +1187,40 @@
     sampleStore.set(node.id, { data: mono, sampleRate: decoded.sampleRate, name: file.name });
     node.fileName = file.name;
     setStatus(`サンプルを読み込みました: ${file.name}`);
+  }
+
+  async function loadAssetSampleForNode(node) {
+    const asset = sampleAssets[node.params?.asset];
+    if (!asset) return false;
+    if (!audioCtx) audioCtx = new AudioContext();
+    const res = await fetch(asset.url);
+    if (!res.ok) throw new Error(`${asset.label}を読み込めません (${res.status})`);
+    const ab = await res.arrayBuffer();
+    const decoded = await audioCtx.decodeAudioData(ab.slice(0));
+    const channels = decoded.numberOfChannels;
+    const len = decoded.length;
+    const mono = new Float32Array(len);
+    for (let ch = 0; ch < channels; ch++) {
+      const data = decoded.getChannelData(ch);
+      for (let i = 0; i < len; i++) mono[i] += data[i] / channels;
+    }
+    sampleStore.set(node.id, { data: mono, sampleRate: decoded.sampleRate, name: asset.label });
+    node.fileName = asset.label;
+    return true;
+  }
+
+  async function preloadProjectSamples(presetName = "プロジェクト") {
+    const currentState = state;
+    const sampleNodes = state.nodes.filter((node) => node.type === "sample" && node.params?.asset);
+    try {
+      await Promise.all(sampleNodes.map((node) => loadAssetSampleForNode(node)));
+      if (state !== currentState) return;
+      renderUI();
+      scheduleRender(true);
+      setStatus(`${presetName}を読み込みました (${sampleNodes.length}素材)`);
+    } catch (err) {
+      if (state === currentState) setStatus(`素材読み込みエラー: ${err.message}`);
+    }
   }
 
   function scheduleRender(force = false) {
@@ -1650,6 +1786,12 @@
     updateSerialFromState();
     syncControls();
     renderUI();
+    const assetNodes = state.nodes.filter((node) => node.type === "sample" && node.params?.asset);
+    if (assetNodes.length > 0) {
+      setStatus("プロジェクトの素材を読み込み中...");
+      preloadProjectSamples("プロジェクト");
+      return;
+    }
     scheduleRender(true);
     setStatus("プロジェクトを開きました");
   }
@@ -1712,7 +1854,8 @@
     buildPresetSelect();
     bindToolbar();
     bindWorkspace();
-    loadPreset("木の足音");
+    const requestedPreset = new URLSearchParams(window.location.search).get("preset");
+    loadPreset(presets[requestedPreset] ? requestedPreset : "木の足音");
   }
 
   init();

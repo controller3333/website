@@ -392,6 +392,15 @@ button:disabled {
   accent-color: currentColor;
 }
 
+.param .asset-label {
+  justify-content: flex-start;
+  color: #c8d5e5;
+  background: #101720;
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  padding: 4px 6px;
+}
+
 .bottom {
   display: grid;
   grid-template-columns: minmax(380px, 820px) 1fr;
