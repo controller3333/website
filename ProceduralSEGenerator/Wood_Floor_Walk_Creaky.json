@@ -1,0 +1,661 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "sequencer_1",
+      "type": "sequencer",
+      "x": 40,
+      "y": 60,
+      "params": {
+        "times": "0.08, 0.57, 1.05, 1.54",
+        "levels": "1, 0.76, 0.92, 0.72",
+        "pitches": "",
+        "mode": "env",
+        "attack": 0.001,
+        "decay": 0.085
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "noise_2",
+      "type": "noise",
+      "x": 40,
+      "y": 250,
+      "params": {
+        "color": "white",
+        "seed": 420
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "filter_3",
+      "type": "filter",
+      "x": 310,
+      "y": 210,
+      "params": {
+        "type": "bandpass",
+        "cutoff": 780,
+        "q": 2.2,
+        "gain": 0,
+        "cvAmount": 0
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "gain_4",
+      "type": "gain",
+      "x": 580,
+      "y": 170,
+      "params": {
+        "gain": 1.15
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "resonator_5",
+      "type": "resonator",
+      "x": 850,
+      "y": 80,
+      "params": {
+        "freq": 430,
+        "decay": 0.18,
+        "damping": 0.44,
+        "mix": 0.82
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "resonator_6",
+      "type": "resonator",
+      "x": 850,
+      "y": 250,
+      "params": {
+        "freq": 165,
+        "decay": 0.26,
+        "damping": 0.62,
+        "mix": 0.52
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "mixer_7",
+      "type": "mixer",
+      "x": 1120,
+      "y": 170,
+      "params": {
+        "levelA": 0.92,
+        "levelB": 0.46,
+        "levelC": 1,
+        "levelD": 1
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "sequencer_8",
+      "type": "sequencer",
+      "x": 40,
+      "y": 460,
+      "params": {
+        "times": "0.115, 0.615, 1.095, 1.585",
+        "levels": "0.72, 0.56, 0.66, 0.50",
+        "pitches": "",
+        "mode": "env",
+        "attack": 0.0005,
+        "decay": 0.024
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "noise_9",
+      "type": "noise",
+      "x": 310,
+      "y": 470,
+      "params": {
+        "color": "white",
+        "seed": 421
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "filter_10",
+      "type": "filter",
+      "x": 580,
+      "y": 470,
+      "params": {
+        "type": "bandpass",
+        "cutoff": 2150,
+        "q": 5.5,
+        "gain": 0,
+        "cvAmount": 0
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "gain_11",
+      "type": "gain",
+      "x": 850,
+      "y": 470,
+      "params": {
+        "gain": 0.48
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "sequencer_12",
+      "type": "sequencer",
+      "x": 40,
+      "y": 680,
+      "params": {
+        "times": "0.145, 0.645, 1.145, 1.635",
+        "levels": "0.44, 0.68, 0.36, 0.58",
+        "pitches": "1540, 1280, 1720, 1420",
+        "mode": "env",
+        "attack": 0.025,
+        "decay": 0.24
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "oscillator_13",
+      "type": "oscillator",
+      "x": 310,
+      "y": 680,
+      "params": {
+        "wave": "triangle",
+        "freq": 0,
+        "fmAmount": 1,
+        "pmAmount": 0.18,
+        "voices": 2,
+        "detune": 7
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "gain_14",
+      "type": "gain",
+      "x": 580,
+      "y": 680,
+      "params": {
+        "gain": 0.34
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "filter_15",
+      "type": "filter",
+      "x": 850,
+      "y": 680,
+      "params": {
+        "type": "bandpass",
+        "cutoff": 1580,
+        "q": 7,
+        "gain": 5,
+        "cvAmount": 0
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "chorus_16",
+      "type": "chorus",
+      "x": 1120,
+      "y": 680,
+      "params": {
+        "rate": 5.5,
+        "depth": 1.4,
+        "delay": 7,
+        "feedback": 0.16,
+        "mix": 0.18
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "sequencer_17",
+      "type": "sequencer",
+      "x": 40,
+      "y": 900,
+      "params": {
+        "times": "0.08, 0.57, 1.05, 1.54",
+        "levels": "0.55, 0.48, 0.52, 0.45",
+        "pitches": "83, 76, 88, 80",
+        "mode": "env",
+        "attack": 0.001,
+        "decay": 0.13
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "oscillator_18",
+      "type": "oscillator",
+      "x": 310,
+      "y": 900,
+      "params": {
+        "wave": "sine",
+        "freq": 0,
+        "fmAmount": 1,
+        "pmAmount": 0,
+        "voices": 1,
+        "detune": 12
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "gain_19",
+      "type": "gain",
+      "x": 580,
+      "y": 900,
+      "params": {
+        "gain": 0.7
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "filter_20",
+      "type": "filter",
+      "x": 850,
+      "y": 900,
+      "params": {
+        "type": "lowpass",
+        "cutoff": 220,
+        "q": 0.7,
+        "gain": 0,
+        "cvAmount": 0
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "mixer_21",
+      "type": "mixer",
+      "x": 1380,
+      "y": 620,
+      "params": {
+        "levelA": 0.58,
+        "levelB": 0.62,
+        "levelC": 0.76,
+        "levelD": 1
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "mixer_22",
+      "type": "mixer",
+      "x": 1640,
+      "y": 360,
+      "params": {
+        "levelA": 1,
+        "levelB": 0.78,
+        "levelC": 1,
+        "levelD": 1
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "compressor_23",
+      "type": "compressor",
+      "x": 1900,
+      "y": 360,
+      "params": {
+        "threshold": -12,
+        "ratio": 3,
+        "attack": 0.003,
+        "release": 0.13,
+        "makeup": 2
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "reverb_24",
+      "type": "reverb",
+      "x": 2160,
+      "y": 360,
+      "params": {
+        "size": 0.18,
+        "damp": 0.72,
+        "mix": 0.08
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "panner_25",
+      "type": "panner",
+      "x": 2420,
+      "y": 360,
+      "params": {
+        "pan": 0,
+        "cvAmount": 0,
+        "spread": 4
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "output_26",
+      "type": "output",
+      "x": 2680,
+      "y": 380,
+      "params": {
+        "gain": 0.9,
+        "normalize": true
+      },
+      "attachedTo": null
+    },
+    {
+      "id": "note_27",
+      "type": "note",
+      "x": 1370,
+      "y": 510,
+      "params": {
+        "text": "木床歩行: キィキィ成分はSqueak、トコトコ成分はKnock/Tickを調整"
+      },
+      "attachedTo": "mixer_21"
+    }
+  ],
+  "connections": [
+    {
+      "id": "c_28",
+      "from": {
+        "node": "noise_2",
+        "port": "out"
+      },
+      "to": {
+        "node": "filter_3",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_29",
+      "from": {
+        "node": "filter_3",
+        "port": "out"
+      },
+      "to": {
+        "node": "gain_4",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_30",
+      "from": {
+        "node": "sequencer_1",
+        "port": "out"
+      },
+      "to": {
+        "node": "gain_4",
+        "port": "cv"
+      }
+    },
+    {
+      "id": "c_31",
+      "from": {
+        "node": "gain_4",
+        "port": "out"
+      },
+      "to": {
+        "node": "resonator_5",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_32",
+      "from": {
+        "node": "gain_4",
+        "port": "out"
+      },
+      "to": {
+        "node": "resonator_6",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_33",
+      "from": {
+        "node": "resonator_5",
+        "port": "out"
+      },
+      "to": {
+        "node": "mixer_7",
+        "port": "a"
+      }
+    },
+    {
+      "id": "c_34",
+      "from": {
+        "node": "resonator_6",
+        "port": "out"
+      },
+      "to": {
+        "node": "mixer_7",
+        "port": "b"
+      }
+    },
+    {
+      "id": "c_35",
+      "from": {
+        "node": "noise_9",
+        "port": "out"
+      },
+      "to": {
+        "node": "filter_10",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_36",
+      "from": {
+        "node": "filter_10",
+        "port": "out"
+      },
+      "to": {
+        "node": "gain_11",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_37",
+      "from": {
+        "node": "sequencer_8",
+        "port": "out"
+      },
+      "to": {
+        "node": "gain_11",
+        "port": "cv"
+      }
+    },
+    {
+      "id": "c_38",
+      "from": {
+        "node": "sequencer_12",
+        "port": "pitch"
+      },
+      "to": {
+        "node": "oscillator_13",
+        "port": "fm"
+      }
+    },
+    {
+      "id": "c_39",
+      "from": {
+        "node": "oscillator_13",
+        "port": "out"
+      },
+      "to": {
+        "node": "gain_14",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_40",
+      "from": {
+        "node": "sequencer_12",
+        "port": "out"
+      },
+      "to": {
+        "node": "gain_14",
+        "port": "cv"
+      }
+    },
+    {
+      "id": "c_41",
+      "from": {
+        "node": "gain_14",
+        "port": "out"
+      },
+      "to": {
+        "node": "filter_15",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_42",
+      "from": {
+        "node": "filter_15",
+        "port": "out"
+      },
+      "to": {
+        "node": "chorus_16",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_43",
+      "from": {
+        "node": "sequencer_17",
+        "port": "pitch"
+      },
+      "to": {
+        "node": "oscillator_18",
+        "port": "fm"
+      }
+    },
+    {
+      "id": "c_44",
+      "from": {
+        "node": "oscillator_18",
+        "port": "out"
+      },
+      "to": {
+        "node": "gain_19",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_45",
+      "from": {
+        "node": "sequencer_17",
+        "port": "out"
+      },
+      "to": {
+        "node": "gain_19",
+        "port": "cv"
+      }
+    },
+    {
+      "id": "c_46",
+      "from": {
+        "node": "gain_19",
+        "port": "out"
+      },
+      "to": {
+        "node": "filter_20",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_47",
+      "from": {
+        "node": "gain_11",
+        "port": "out"
+      },
+      "to": {
+        "node": "mixer_21",
+        "port": "a"
+      }
+    },
+    {
+      "id": "c_48",
+      "from": {
+        "node": "chorus_16",
+        "port": "out"
+      },
+      "to": {
+        "node": "mixer_21",
+        "port": "b"
+      }
+    },
+    {
+      "id": "c_49",
+      "from": {
+        "node": "filter_20",
+        "port": "out"
+      },
+      "to": {
+        "node": "mixer_21",
+        "port": "c"
+      }
+    },
+    {
+      "id": "c_50",
+      "from": {
+        "node": "mixer_7",
+        "port": "out"
+      },
+      "to": {
+        "node": "mixer_22",
+        "port": "a"
+      }
+    },
+    {
+      "id": "c_51",
+      "from": {
+        "node": "mixer_21",
+        "port": "out"
+      },
+      "to": {
+        "node": "mixer_22",
+        "port": "b"
+      }
+    },
+    {
+      "id": "c_52",
+      "from": {
+        "node": "mixer_22",
+        "port": "out"
+      },
+      "to": {
+        "node": "compressor_23",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_53",
+      "from": {
+        "node": "compressor_23",
+        "port": "out"
+      },
+      "to": {
+        "node": "reverb_24",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_54",
+      "from": {
+        "node": "reverb_24",
+        "port": "out"
+      },
+      "to": {
+        "node": "panner_25",
+        "port": "in"
+      }
+    },
+    {
+      "id": "c_55",
+      "from": {
+        "node": "panner_25",
+        "port": "out"
+      },
+      "to": {
+        "node": "output_26",
+        "port": "in"
+      }
+    }
+  ]
+}

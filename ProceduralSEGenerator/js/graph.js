@@ -126,7 +126,7 @@
     toJSON() {
       return {
         version: 1,
-        nodes: Object.values(this.nodes).map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y, params: n.params })),
+        nodes: Object.values(this.nodes).map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y, params: n.params, attachedTo: n.attachedTo || null })),
         connections: this.connections.map(c => ({ id: c.id, from: c.from, to: c.to })),
       };
     }
@@ -135,7 +135,7 @@
       const g = new Graph();
       let maxN = 0;
       for (const n of data.nodes || []) {
-        g.nodes[n.id] = { id: n.id, type: n.type, x: n.x, y: n.y, params: Object.assign({}, n.params) };
+        g.nodes[n.id] = { id: n.id, type: n.type, x: n.x, y: n.y, params: Object.assign({}, n.params), attachedTo: n.attachedTo || null };
         const num = parseInt(String(n.id).replace(/\D/g, ''), 10); if (num > maxN) maxN = num;
       }
       for (const c of data.connections || []) {

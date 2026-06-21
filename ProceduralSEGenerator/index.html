@@ -31,7 +31,7 @@
       <label class="field check"><input id="in-loop" type="checkbox"> ループ</label>
       <label class="field check"><input id="in-autorender" type="checkbox" checked> 自動</label>
       <div class="sep"></div>
-      <label class="field">ピッチ±
+      <label class="field">Pitch±
         <input id="in-vary" type="number" min="0" max="200" step="1" value="0"> ct
       </label>
       <button id="btn-dice" class="btn" title="ランダムに揺らして再生">🎲</button>
@@ -40,13 +40,15 @@
       <button id="btn-export" class="btn">⬇ WAV</button>
     </div>
     <div class="rightbar">
+      <label class="field check" title="ノード名・パラメータ名を日本語表示"><input id="in-lang" type="checkbox" checked> 日本語</label>
+      <div class="sep"></div>
       <select id="preset-select" title="プリセット">
         <option value="">— プリセット —</option>
       </select>
       <button id="btn-load-preset" class="btn">読込</button>
       <div class="sep"></div>
-      <button id="btn-save" class="btn" title="グラフをJSONで保存">保存</button>
-      <button id="btn-open" class="btn" title="JSONグラフを開く">開く</button>
+      <button id="btn-save" class="btn" title="グラフをJSONファイルで保存">保存</button>
+      <button id="btn-open" class="btn" title="JSONファイルからグラフを開く">開く</button>
       <button id="btn-clear" class="btn danger">消去</button>
     </div>
   </header>
@@ -56,6 +58,7 @@
       <div class="palette-title">ノード</div>
       <div id="palette-list"></div>
       <div class="palette-hint">クリックで追加 / ポートをドラッグで接続 / 配線クリックで削除<br>ノードに重ねて <b>Ctrl+Space</b> でその地点の音を試聴
+      </div>
     </aside>
 
     <main id="canvas-wrap">
@@ -63,7 +66,7 @@
         <svg id="wires" xmlns="http://www.w3.org/2000/svg"></svg>
         <div id="nodes"></div>
       </div>
-      <div id="canvas-hint">右クリックドラッグ または 空白ドラッグでパン / ホイールでズーム</div>
+      <div id="canvas-hint">左ドラッグで範囲選択 / 右・中ドラッグでパン / ホイールでズーム / 右クリックでノード追加</div>
     </main>
   </div>
 

@@ -3,24 +3,6 @@
   'use strict';
 
   const NS = 'http://www.w3.org/2000/svg';
-  const OPTION_LABELS = {
-    sine: 'サイン',
-    square: '矩形',
-    saw: 'ノコギリ',
-    triangle: '三角',
-    white: 'ホワイト',
-    pink: 'ピンク',
-    brown: 'ブラウン',
-    linear: '直線',
-    exp: '急変化',
-    log: 'なだらか',
-    lowpass: 'ローパス',
-    highpass: 'ハイパス',
-    bandpass: 'バンドパス',
-    tanh: '滑らか',
-    clip: 'クリップ',
-    fold: '折り返し',
-  };
 
   class NodeEditor {
     constructor(opts) {
@@ -30,7 +12,10 @@
       this.wiresEl = document.getElementById('wires');
       this.wrapEl = document.getElementById('canvas-wrap');
       this.onChange = opts.onChange || function () {};
-      this.selected = null;
+      this.onContextMenu = opts.onContextMenu || null;
+      this.selected = null;          // primary selected id (for copy/duplicate)
+      this.sel = new Set();          // full multi-selection
+      this.lang = opts.lang || 'en';
 
       this.pan = { x: 40, y: 40 };
       this.zoom = 1;
@@ -64,13 +49,15 @@
       this.nodeEls = {};
       this.portEls = {};
       for (const id in this.graph.nodes) this._renderNode(this.graph.nodes[id]);
+      this._repositionAttachedNotes();
       this.drawWires();
     }
 
     _renderNode(node) {
       const def = DSP.TYPES[node.type];
+      const isNote = !!def.annotation;
       const el = document.createElement('div');
-      el.className = 'node';
+      el.className = 'node' + (isNote ? ' note-node' : '');
       el.style.left = node.x + 'px';
       el.style.top = node.y + 'px';
       el.dataset.id = node.id;
@@ -79,10 +66,17 @@
       // header
       const header = document.createElement('div');
       header.className = 'node-header';
-      header.innerHTML = `<span class="node-title">${def.title}</span>`;
+      header.innerHTML = `<span class="node-title">${DSP.title(node.type, this.lang)}</span>`;
+      if (isNote && node.attachedTo) {
+        const unlink = document.createElement('button');
+        unlink.className = 'node-link'; unlink.textContent = '⛓'; unlink.title = this.lang === 'ja' ? '連結を解除' : 'Detach';
+        unlink.addEventListener('pointerdown', e => e.stopPropagation());
+        unlink.addEventListener('click', e => { e.stopPropagation(); this._detachNote(node.id); });
+        header.appendChild(unlink);
+      }
       if (def.category !== 'Output') {
         const del = document.createElement('button');
-        del.className = 'node-del'; del.textContent = '×'; del.title = '削除';
+        del.className = 'node-del'; del.textContent = '×'; del.title = this.lang === 'ja' ? '削除' : 'Delete';
         del.addEventListener('pointerdown', e => e.stopPropagation());
         del.addEventListener('click', e => { e.stopPropagation(); this._deleteNode(node.id); });
         header.appendChild(del);
@@ -93,20 +87,19 @@
       const body = document.createElement('div');
       body.className = 'node-body';
 
-      // input ports column
-      const inCol = document.createElement('div');
-      inCol.className = 'ports in';
-      for (const port of def.inputs) inCol.appendChild(this._renderPort(node, 'in', port));
-      // output ports column
-      const outCol = document.createElement('div');
-      outCol.className = 'ports out';
-      for (const port of def.outputs) outCol.appendChild(this._renderPort(node, 'out', port));
-
-      const portRow = document.createElement('div');
-      portRow.className = 'port-row';
-      portRow.appendChild(inCol);
-      portRow.appendChild(outCol);
-      body.appendChild(portRow);
+      if (!isNote) {
+        const inCol = document.createElement('div');
+        inCol.className = 'ports in';
+        for (const port of def.inputs) inCol.appendChild(this._renderPort(node, 'in', port));
+        const outCol = document.createElement('div');
+        outCol.className = 'ports out';
+        for (const port of def.outputs) outCol.appendChild(this._renderPort(node, 'out', port));
+        const portRow = document.createElement('div');
+        portRow.className = 'port-row';
+        portRow.appendChild(inCol);
+        portRow.appendChild(outCol);
+        body.appendChild(portRow);
+      }
 
       // params
       if (def.params.length) {
@@ -118,8 +111,7 @@
 
       el.appendChild(body);
 
-      header.addEventListener('pointerdown', e => this._startNodeDrag(e, node, el));
-      el.addEventListener('pointerdown', () => this._select(node.id));
+      el.addEventListener('pointerdown', e => this._onNodePointerDown(e, node));
 
       this.nodesEl.appendChild(el);
       this.nodeEls[node.id] = el;
@@ -133,7 +125,8 @@
       dot.className = 'port-dot';
       dot.dataset.node = node.id; dot.dataset.port = port.name; dot.dataset.dir = dir;
       const label = document.createElement('span');
-      label.className = 'port-label'; label.textContent = port.label;
+      label.className = 'port-label';
+      label.textContent = (window.DSP && DSP.portLabel) ? DSP.portLabel(port.label, this.lang) : port.label;
       if (dir === 'in') { wrap.appendChild(dot); wrap.appendChild(label); }
       else { wrap.appendChild(label); wrap.appendChild(dot); }
       dot.addEventListener('pointerdown', e => this._startPortDrag(e, node, dir, port.name));
@@ -145,14 +138,17 @@
       const row = document.createElement('div');
       row.className = 'param';
       const label = document.createElement('label');
-      label.className = 'param-label'; label.textContent = pd.label;
+      const labelText = (window.DSP && DSP.paramLabel) ? DSP.paramLabel(node.type, pd.name, pd.label, this.lang) : pd.label;
+      label.className = 'param-label'; label.textContent = labelText;
       row.appendChild(label);
 
       if (pd.type === 'select') {
         const sel = document.createElement('select');
         for (const o of pd.options) {
           const opt = document.createElement('option');
-          opt.value = o; opt.textContent = OPTION_LABELS[o] || o; sel.appendChild(opt);
+          opt.value = o;
+          opt.textContent = (window.DSP && DSP.optionLabel) ? DSP.optionLabel(o, this.lang) : o;
+          sel.appendChild(opt);
         }
         sel.value = node.params[pd.name];
         sel.addEventListener('change', () => { node.params[pd.name] = sel.value; this.onChange(); });
@@ -166,6 +162,25 @@
         cb.addEventListener('pointerdown', e => e.stopPropagation());
         label.classList.add('inline');
         row.appendChild(cb);
+      } else if (pd.type === 'text') {
+        const inp = document.createElement('input');
+        inp.type = 'text'; inp.className = 'param-text';
+        inp.value = (node.params[pd.name] !== undefined && node.params[pd.name] !== null) ? node.params[pd.name] : '';
+        inp.addEventListener('change', () => { node.params[pd.name] = inp.value; this.onChange(); });
+        inp.addEventListener('pointerdown', e => e.stopPropagation());
+        row.appendChild(inp);
+      } else if (pd.type === 'textarea') {
+        if (!pd.label) row.removeChild(label);
+        const ta = document.createElement('textarea');
+        ta.className = 'param-textarea'; ta.rows = 2;
+        ta.value = (node.params[pd.name] !== undefined && node.params[pd.name] !== null) ? node.params[pd.name] : '';
+        const commit = () => { node.params[pd.name] = ta.value; this._repositionAttachedNotes(); this.onChange(); };
+        ta.addEventListener('input', () => { node.params[pd.name] = ta.value; this._repositionAttachedNotes(); });
+        ta.addEventListener('change', commit);
+        ta.addEventListener('pointerdown', e => e.stopPropagation());
+        // let the wheel scroll the memo instead of zooming the canvas
+        ta.addEventListener('wheel', e => e.stopPropagation());
+        row.appendChild(ta);
       } else { // number -> slider + numeric readout
         const ctrl = document.createElement('div');
         ctrl.className = 'param-num';
@@ -211,17 +226,70 @@
         if (pd.unit) { const u = document.createElement('span'); u.className = 'param-unit'; u.textContent = pd.unit; ctrl.appendChild(u); }
         row.appendChild(ctrl);
       }
+      // hover tooltip describing this parameter
+      const dtxt = (window.DSP && DSP.paramDesc) ? DSP.paramDesc(node.type, pd.name, this.lang) : '';
+      if (dtxt || labelText) {
+        row.addEventListener('mouseenter', () => this._showParamTip(row, labelText || pd.name, dtxt));
+        row.addEventListener('mouseleave', () => this._hideParamTip());
+      }
       return row;
     }
 
-    _select(id) {
-      if (this.selected && this.nodeEls[this.selected]) this.nodeEls[this.selected].classList.remove('selected');
-      this.selected = id;
-      if (id && this.nodeEls[id]) this.nodeEls[id].classList.add('selected');
+    _showParamTip(row, title, body) {
+      if (!this._ptip) { this._ptip = document.createElement('div'); this._ptip.className = 'ui-tip'; document.body.appendChild(this._ptip); }
+      const t = this._ptip;
+      t.innerHTML = '';
+      const b = document.createElement('b'); b.textContent = title; t.appendChild(b);
+      if (body) { const s = document.createElement('span'); s.textContent = body; t.appendChild(s); }
+      t.style.display = 'block';
+      // anchor to the whole node (not the param row) so the tip never covers the
+      // slider / number controls. prefer right of node, else left, else above/below.
+      const nodeEl = (row.closest && row.closest('.node')) || row;
+      const nr = nodeEl.getBoundingClientRect();
+      const rr = row.getBoundingClientRect();
+      const tw = t.offsetWidth, th = t.offsetHeight;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      let left = nr.right + 24, top = rr.top - 2;
+      if (left + tw > vw - 8) {                 // no room on the right -> left of node
+        left = nr.left - tw - 16;
+        if (left < 8) {                         // no room either side -> above (else below)
+          left = Math.min(Math.max(8, nr.left), vw - tw - 8);
+          top = (nr.top - th - 8 >= 8) ? nr.top - th - 8 : nr.bottom + 8;
+        }
+      }
+      top = Math.max(8, Math.min(top, vh - th - 8));
+      t.style.left = left + 'px'; t.style.top = top + 'px';
+    }
+    _hideParamTip() { if (this._ptip) this._ptip.style.display = 'none'; }
+
+    // ---- selection (multi) ----
+    _setSelection(ids) {
+      const next = new Set(ids);
+      for (const id of this.sel) if (!next.has(id) && this.nodeEls[id]) this.nodeEls[id].classList.remove('selected');
+      for (const id of next) if (this.nodeEls[id]) this.nodeEls[id].classList.add('selected');
+      this.sel = next;
+      this.selected = ids.length ? ids[ids.length - 1] : null;
+    }
+    _selectOnly(id) { this._setSelection(id ? [id] : []); }
+    _select(id) { this._selectOnly(id); }            // back-compat alias
+    _selectAdd(id) { if (!this.sel.has(id)) { this.sel.add(id); if (this.nodeEls[id]) this.nodeEls[id].classList.add('selected'); this.selected = id; } }
+    _deselectOne(id) { this.sel.delete(id); if (this.nodeEls[id]) this.nodeEls[id].classList.remove('selected'); this.selected = this.sel.size ? [...this.sel].pop() : null; }
+    _clearSelection() { for (const id of this.sel) if (this.nodeEls[id]) this.nodeEls[id].classList.remove('selected'); this.sel.clear(); this.selected = null; }
+    selectedIds() { return [...this.sel]; }
+    deleteSelected() {
+      const ids = [...this.sel].filter(id => this.graph.nodes[id] && this.graph.nodes[id].type !== 'output');
+      for (const id of ids) this._deleteNode(id);
     }
 
     _deleteNode(id) {
+      // detach any notes that were pinned to this node
+      for (const nid in this.graph.nodes) {
+        const n = this.graph.nodes[nid];
+        if (n.attachedTo === id) { n.attachedTo = null; if (this.nodeEls[nid]) this._refreshNode(n); }
+      }
       this.graph.removeNode(id);
+      this.sel.delete(id);
+      if (this.selected === id) this.selected = this.sel.size ? [...this.sel].pop() : null;
       const el = this.nodeEls[id];
       if (el) el.remove();
       delete this.nodeEls[id];
@@ -229,17 +297,37 @@
       this.onChange();
     }
 
-    // ---- node dragging ----
-    _startNodeDrag(e, node, el) {
-      if (e.button !== 0) return;
-      e.preventDefault();
-      this._select(node.id);
-      el.classList.add('dragging');
-      const start = this.clientToWorld(e.clientX, e.clientY);
-      this.drag = {
-        kind: 'node', node, el,
-        offX: start.x - node.x, offY: start.y - node.y,
-      };
+    // re-render a single node element in place (e.g. after attach/detach/lang)
+    _refreshNode(node) {
+      const old = this.nodeEls[node.id];
+      if (old) old.remove();
+      const el = this._renderNode(node);
+      if (this.sel.has(node.id)) el.classList.add('selected');
+    }
+
+    // ---- node pointer down: select (+ shift toggle) and start drag (group-aware) ----
+    _onNodePointerDown(e, node) {
+      const onHeader = !!(e.target.closest && e.target.closest('.node-header'));
+      const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+      if (additive) {
+        if (this.sel.has(node.id)) this._deselectOne(node.id); else this._selectAdd(node.id);
+      } else if (!this.sel.has(node.id)) {
+        this._selectOnly(node.id);
+      }
+      // left-drag on the header moves the node (or the whole selection)
+      if (!additive && onHeader && e.button === 0) {
+        e.preventDefault();
+        const group = this.sel.size > 1 && this.sel.has(node.id);
+        if (node.attachedTo && !group) { node.attachedTo = null; this._refreshNode(node); this.onChange(); } // detach note to move
+        const ids = group ? [...this.sel] : [node.id];
+        const start = this.clientToWorld(e.clientX, e.clientY);
+        const items = ids.filter(id => this.graph.nodes[id]).map(id => {
+          const n = this.graph.nodes[id];
+          return { id, node: n, el: this.nodeEls[id], offX: start.x - n.x, offY: start.y - n.y };
+        });
+        items.forEach(it => it.el && it.el.classList.add('dragging'));
+        this.drag = { kind: 'node', items };
+      }
     }
 
     // ---- port -> wire dragging ----
@@ -268,15 +356,35 @@
       return path;
     }
 
+    _updateSelRect(x0, y0, x1, y1) {
+      if (!this._selRect) return;
+      const r = this.wrapEl.getBoundingClientRect();
+      this._selRect.style.left = (Math.min(x0, x1) - r.left) + 'px';
+      this._selRect.style.top = (Math.min(y0, y1) - r.top) + 'px';
+      this._selRect.style.width = Math.abs(x1 - x0) + 'px';
+      this._selRect.style.height = Math.abs(y1 - y0) + 'px';
+    }
+
     // ---- global pointer handling ----
     _bind() {
-      // pan with background drag (left on empty) or right/middle drag
       this.wrapEl.addEventListener('pointerdown', e => {
+        // clicking the canvas commits/blurs a focused field (Length, preset, etc.).
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'SELECT' || ae.tagName === 'TEXTAREA')) ae.blur();
         if (e.target.closest('.node')) return;
-        if (e.button === 0 || e.button === 1 || e.button === 2) {
+        if (e.button === 1 || e.button === 2) {        // middle/right drag = pan; right w/o drag = menu
           e.preventDefault();
-          this.drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, px: this.pan.x, py: this.pan.y };
-          this._select(null);
+          this.drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, px: this.pan.x, py: this.pan.y, btn: e.button, moved: false, downX: e.clientX, downY: e.clientY };
+        } else if (e.button === 0) {                   // left drag = rubber-band selection
+          e.preventDefault();
+          const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+          this._selBase = additive ? new Set(this.sel) : new Set();
+          if (!additive) this._clearSelection();
+          this._selRect = document.createElement('div');
+          this._selRect.className = 'sel-rect';
+          this.wrapEl.appendChild(this._selRect);
+          this._updateSelRect(e.clientX, e.clientY, e.clientX, e.clientY);
+          this.drag = { kind: 'select', sx: e.clientX, sy: e.clientY };
         }
       });
       this.wrapEl.addEventListener('contextmenu', e => e.preventDefault());
@@ -313,15 +421,30 @@
       if (!d) return;
       if (d.kind === 'node') {
         const w = this.clientToWorld(e.clientX, e.clientY);
-        d.node.x = Math.round(w.x - d.offX);
-        d.node.y = Math.round(w.y - d.offY);
-        d.el.style.left = d.node.x + 'px';
-        d.el.style.top = d.node.y + 'px';
+        for (const it of d.items) {
+          it.node.x = Math.round(w.x - it.offX);
+          it.node.y = Math.round(w.y - it.offY);
+          if (it.el) { it.el.style.left = it.node.x + 'px'; it.el.style.top = it.node.y + 'px'; }
+          this._repositionAttachedNotes(it.id);
+        }
+        if (d.items.length === 1 && DSP.TYPES[d.items[0].node.type].annotation) this._highlightAttachTarget(d.items[0].node);
         this.drawWires();
       } else if (d.kind === 'pan') {
         this.pan.x = d.px + (e.clientX - d.sx);
         this.pan.y = d.py + (e.clientY - d.sy);
+        if (Math.abs(e.clientX - d.sx) > 4 || Math.abs(e.clientY - d.sy) > 4) d.moved = true;
         this._applyTransform();
+      } else if (d.kind === 'select') {
+        this._updateSelRect(d.sx, d.sy, e.clientX, e.clientY);
+        const left = Math.min(d.sx, e.clientX), right = Math.max(d.sx, e.clientX);
+        const top = Math.min(d.sy, e.clientY), bottom = Math.max(d.sy, e.clientY);
+        const ids = new Set(this._selBase);
+        for (const id in this.graph.nodes) {
+          const el = this.nodeEls[id]; if (!el) continue;
+          const nr = el.getBoundingClientRect();
+          if (!(nr.right < left || nr.left > right || nr.bottom < top || nr.top > bottom)) ids.add(id);
+        }
+        this._setSelection([...ids]);
       } else if (d.kind === 'wire') {
         const from = this._portCenter(d.fromNode, d.fromDir, d.fromPort);
         const to = this.clientToWorld(e.clientX, e.clientY);
@@ -335,7 +458,18 @@
     _onUp(e) {
       const d = this.drag;
       if (!d) { return; }
-      if (d.kind === 'node' && d.el) { d.el.classList.remove('dragging'); this.onChange(); }
+      if (d.kind === 'node') {
+        d.items.forEach(it => it.el && it.el.classList.remove('dragging'));
+        if (d.items.length === 1 && DSP.TYPES[d.items[0].node.type].annotation) { this._clearAttachHighlight(); this._tryAttachNote(d.items[0].node); }
+        this.onChange();
+      }
+      if (d.kind === 'pan') {
+        // a right-click without dragging opens the insert context menu
+        if (d.btn === 2 && !d.moved && this.onContextMenu) this.onContextMenu(d.downX, d.downY);
+      }
+      if (d.kind === 'select') {
+        if (this._selRect) { this._selRect.remove(); this._selRect = null; }
+      }
       if (d.kind === 'wire') {
         if (d.tmp) d.tmp.remove();
         this._setHover(null);
@@ -443,6 +577,74 @@
       this._audTimer = setTimeout(() => {
         if (this._audEl) { this._audEl.classList.remove('auditioning'); this._audEl = null; }
       }, 800);
+    }
+
+    // ---- Note attachment ----
+    // find the node whose top edge a (free) note is hovering over, to attach to
+    _findAttachTarget(noteNode) {
+      const noteEl = this.nodeEls[noteNode.id];
+      if (!noteEl) return null;
+      const cx = noteNode.x + noteEl.offsetWidth / 2;
+      const noteBottom = noteNode.y + noteEl.offsetHeight;
+      let best = null, bestDy = 1e9;
+      for (const id in this.graph.nodes) {
+        const n = this.graph.nodes[id];
+        if (id === noteNode.id) continue;
+        if (DSP.TYPES[n.type].annotation) continue; // notes don't attach to notes
+        const el = this.nodeEls[id]; if (!el) continue;
+        const w = el.offsetWidth;
+        if (cx < n.x - 12 || cx > n.x + w + 12) continue;       // note center over node
+        const dy = Math.abs(noteBottom - n.y);                   // note bottom near node top
+        if (dy < 55 && dy < bestDy) { bestDy = dy; best = n; }
+      }
+      return best;
+    }
+
+    _tryAttachNote(noteNode) {
+      const target = this._findAttachTarget(noteNode);
+      if (!target) return;
+      noteNode.attachedTo = target.id;
+      this._refreshNode(noteNode);
+      this._repositionAttachedNotes(target.id);
+    }
+
+    _detachNote(id) {
+      const n = this.graph.nodes[id];
+      if (!n) return;
+      n.attachedTo = null;
+      this._refreshNode(n);
+      this.onChange();
+    }
+
+    // place attached notes just above their target's top edge (in sync on move)
+    _repositionAttachedNotes(targetId) {
+      for (const id in this.graph.nodes) {
+        const n = this.graph.nodes[id];
+        if (!n.attachedTo) continue;
+        if (targetId && n.attachedTo !== targetId) continue;
+        const target = this.graph.nodes[n.attachedTo];
+        const tEl = this.nodeEls[n.attachedTo], nEl = this.nodeEls[id];
+        if (!target || !tEl || !nEl) { n.attachedTo = null; if (nEl) this._refreshNode(n); continue; }
+        n.x = target.x;
+        n.y = target.y - nEl.offsetHeight - 6;
+        nEl.style.left = n.x + 'px';
+        nEl.style.top = n.y + 'px';
+      }
+    }
+
+    _highlightAttachTarget(noteNode) {
+      const t = this._findAttachTarget(noteNode);
+      const el = t ? this.nodeEls[t.id] : null;
+      if (this._attachHi && this._attachHi !== el) this._attachHi.classList.remove('attach-target');
+      if (el) { el.classList.add('attach-target'); this._attachHi = el; } else this._attachHi = null;
+    }
+    _clearAttachHighlight() {
+      if (this._attachHi) { this._attachHi.classList.remove('attach-target'); this._attachHi = null; }
+    }
+
+    setLang(lang) {
+      this.lang = lang;
+      this.renderAll();
     }
 
     rebuild(graph) {
