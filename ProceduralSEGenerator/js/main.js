@@ -30,15 +30,24 @@
 
   // ---- persisted prefs (server-side settings.json, localStorage fallback) ----
   let prefs = {};
+  function hasSettingsAPI() {
+    return ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+  }
+  function localPrefs() {
+    try { return JSON.parse(localStorage.getItem('seSettings') || '{}'); }
+    catch (e) { return {}; }
+  }
   function loadPrefs(cb) {
+    if (!hasSettingsAPI()) { cb(localPrefs()); return; }
     fetch('/api/settings')
       .then(r => { if (!r.ok) throw 0; return r.json(); })
       .then(s => cb(s || {}))
-      .catch(() => { try { cb(JSON.parse(localStorage.getItem('seSettings') || '{}')); } catch (e) { cb({}); } });
+      .catch(() => cb(localPrefs()));
   }
   function savePrefs() {
     const body = JSON.stringify(prefs);
     try { localStorage.setItem('seSettings', body); } catch (e) {}
+    if (!hasSettingsAPI()) return;
     fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
   }
 
