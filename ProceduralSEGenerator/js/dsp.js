@@ -509,6 +509,129 @@
       }
     },
 
+    woodtap: {
+      category: 'Source', title: 'Wood Tap', color: '#a16207',
+      inputs: [{ name: 'trig', label: 'Trig' }], outputs: [{ name: 'out', label: 'Out' }],
+      params: [
+        { name: 'freq', type: 'number', label: 'Body', min: 120, max: 1200, step: 1, default: 420, unit: 'Hz', log: true },
+        { name: 'decay', type: 'number', label: 'Decay', min: 0.03, max: 0.6, step: 0.001, default: 0.12, unit: 's' },
+        { name: 'hardness', type: 'number', label: 'Hardness', min: 0, max: 1, step: 0.01, default: 0.7 },
+        { name: 'body', type: 'number', label: 'Body Mix', min: 0, max: 1, step: 0.01, default: 0.55 },
+        { name: 'level', type: 'number', label: 'Level', min: 0, max: 2, step: 0.01, default: 1 },
+        { name: 'seed', type: 'number', label: 'Seed', min: 0, max: 9999, step: 1, default: 1 },
+      ],
+      // Short woody impact: a rough contact click plus several damped wooden
+      // partials. This avoids the rounded sine "puff" that plain thumps create.
+      process(node, ins, ctx) {
+        const out = buf(ctx);
+        const sr = ctx.sampleRate;
+        const trig = ins.trig;
+        const starts = [];
+        if (trig) {
+          let prev = 0;
+          for (let i = 0; i < trig.length; i++) {
+            const v = trig[i];
+            if (v > 0.5 && prev <= 0.5) starts.push(i);
+            prev = v;
+          }
+        } else starts.push(0);
+        const freq = p(node, 'freq', 420) * (ctx.pitchMul || 1);
+        const decay = p(node, 'decay', 0.12);
+        const hardness = clamp(p(node, 'hardness', 0.7), 0, 1);
+        const body = clamp(p(node, 'body', 0.55), 0, 1);
+        const level = p(node, 'level', 1);
+        const rnd = mulberry32((p(node, 'seed', 1) + (ctx.seedOffset || 0)) * 1000003 + 777);
+        const maxN = Math.min(out.length, Math.round(decay * sr * 5));
+        for (const start of starts) {
+          const ph = [rnd() * TAU, rnd() * TAU, rnd() * TAU, rnd() * TAU];
+          const clickN = Math.max(1, Math.round((0.0015 + (1 - hardness) * 0.006) * sr));
+          for (let k = 0; k < maxN && start + k < out.length; k++) {
+            const t = k / sr;
+            const bodyEnv = Math.exp(-t / decay);
+            const midEnv = Math.exp(-t / (decay * 0.58));
+            const hiEnv = Math.exp(-t / (0.028 + (1 - hardness) * 0.025));
+            const clickEnv = k < clickN ? Math.exp(-5 * k / clickN) : 0;
+            const f1 = freq;
+            const f2 = freq * 1.82;
+            const f3 = freq * 2.63;
+            const f4 = Math.min(5000, freq * 4.1 + 650);
+            const partials =
+              Math.sin(TAU * f1 * t + ph[0]) * 0.62 * bodyEnv +
+              Math.sin(TAU * f2 * t + ph[1]) * 0.34 * midEnv +
+              Math.sin(TAU * f3 * t + ph[2]) * 0.20 * Math.exp(-t / (decay * 0.32)) +
+              Math.sin(TAU * f4 * t + ph[3]) * 0.08 * hiEnv;
+            const contact = (rnd() * 2 - 1) * clickEnv * (0.18 + hardness * 0.42);
+            const idx = start + k;
+            out[idx] += (partials * body + contact) * level;
+          }
+        }
+        return { out };
+      }
+    },
+
+    creak: {
+      category: 'Source', title: 'Friction Creak', color: '#c084fc',
+      inputs: [{ name: 'trig', label: 'Trig' }], outputs: [{ name: 'out', label: 'Out' }],
+      params: [
+        { name: 'freq', type: 'number', label: 'Tone', min: 600, max: 5000, step: 1, default: 1900, unit: 'Hz', log: true },
+        { name: 'duration', type: 'number', label: 'Duration', min: 0.03, max: 1.0, step: 0.001, default: 0.22, unit: 's' },
+        { name: 'bend', type: 'number', label: 'Bend', min: -2500, max: 2500, step: 1, default: 450, unit: 'Hz' },
+        { name: 'roughness', type: 'number', label: 'Rough', min: 0, max: 1, step: 0.01, default: 0.65 },
+        { name: 'level', type: 'number', label: 'Level', min: 0, max: 2, step: 0.01, default: 0.7 },
+        { name: 'seed', type: 'number', label: 'Seed', min: 0, max: 9999, step: 1, default: 1 },
+      ],
+      // Stick-slip creak: noisy friction through a narrow moving band-pass. The
+      // pitch bends and jitters so it reads as wood strain, not a clean beep.
+      process(node, ins, ctx) {
+        const out = buf(ctx);
+        const sr = ctx.sampleRate;
+        const trig = ins.trig;
+        const starts = [];
+        if (trig) {
+          let prev = 0;
+          for (let i = 0; i < trig.length; i++) {
+            const v = trig[i];
+            if (v > 0.5 && prev <= 0.5) starts.push(i);
+            prev = v;
+          }
+        } else starts.push(0);
+        const base = p(node, 'freq', 1900) * (ctx.pitchMul || 1);
+        const dur = p(node, 'duration', 0.22);
+        const bend = p(node, 'bend', 450);
+        const rough = clamp(p(node, 'roughness', 0.65), 0, 1);
+        const level = p(node, 'level', 0.7);
+        const rnd = mulberry32((p(node, 'seed', 1) + (ctx.seedOffset || 0)) * 9176 + 313);
+        const durN = Math.max(1, Math.round(dur * sr));
+        for (const start of starts) {
+          let z1 = 0, z2 = 0, lastCut = -1, co = null;
+          let jitter = 0;
+          const wobA = 7 + rnd() * 7;
+          const wobB = 19 + rnd() * 23;
+          for (let k = 0; k < durN && start + k < out.length; k++) {
+            const u = k / durN;
+            const t = k / sr;
+            const atk = clamp(u / 0.16, 0, 1);
+            const rel = Math.pow(1 - u, 0.7);
+            const env = atk * rel * (0.75 + 0.25 * Math.sin(Math.PI * clamp(u, 0, 1)));
+            jitter = jitter * 0.985 + (rnd() * 2 - 1) * (5 + rough * 20);
+            let cut = base + bend * (u - 0.15) + Math.sin(TAU * wobA * t) * (40 + rough * 120) + Math.sin(TAU * wobB * t) * (15 + rough * 80) + jitter;
+            cut = clamp(cut, 400, sr * 0.42);
+            if (!co || Math.abs(cut - lastCut) > 4) {
+              co = biquadCoeffs('bandpass', cut, 7 + rough * 12, sr, 0);
+              lastCut = cut;
+            }
+            const stick = Math.sign(Math.sin(TAU * (18 + rough * 45) * t + rnd() * 0.08));
+            const x = (rnd() * 2 - 1) * (0.9 + rough * 0.5) + stick * 0.18;
+            const y = co[0] * x + z1;
+            z1 = co[1] * x - co[3] * y + z2;
+            z2 = co[2] * x - co[4] * y;
+            out[start + k] += y * env * level;
+          }
+        }
+        return { out };
+      }
+    },
+
     // ===== MODULATION / CONTROL =====
     lfo: {
       category: 'Modulation', title: 'LFO', color: '#a855f7',
@@ -1394,6 +1517,8 @@
     modal: { ja: 'モーダル/打撃体', en: 'Struck-object resonant partials — bell/glass/metal/drum.', jaDesc: '打撃で鳴る共鳴partial。鐘/ガラス/金属棒/陶器/太鼓を内蔵生成。' },
     impulse: { ja: 'インパルス/クリック', en: 'Single or repeated clicks — excite resonators, ticks, sparks.', jaDesc: '単発/連続クリック。レゾネータ励起・ティック・火花に。' },
     wavetable: { ja: 'ウェーブテーブル', en: 'Morphing wavetable osc (position CV) for evolving timbres.', jaDesc: 'positionで波形モーフ。CVで進化する音色（オルガン/声/ドローン）。' },
+    woodtap: { ja: '木の打音', en: 'Short wooden contact: click plus damped board partials.', jaDesc: '短い接触クリック＋減衰する木板の倍音。「トコ」の芯を作る。' },
+    creak: { ja: '摩擦きしみ', en: 'Noisy stick-slip creak with a moving narrow resonance.', jaDesc: '高域の摩擦ノイズを揺れる細い共鳴に通す。「キィ」の伸びと擦れ。' },
     lfo: { ja: 'LFO', en: 'Low-frequency oscillator control signal (-1..1).', jaDesc: '低周波オシレータの制御信号(-1..1)。' },
     envelope: { ja: 'エンベロープ (ADSR)', en: 'ADSR envelope; multiplies input or outputs the contour.', jaDesc: 'ADSR包絡線。入力に乗算、未接続なら包絡線を出力。' },
     multienv: { ja: 'マルチエンベロープ', en: 'Arbitrary "t:level" breakpoint envelope.', jaDesc: '任意の「t:level」ブレークポイント包絡線。' },
@@ -1500,6 +1625,12 @@
     levelB: { en: 'Level of input B.', ja: '入力Bの音量。' },
     levelC: { en: 'Level of input C.', ja: '入力Cの音量。' },
     levelD: { en: 'Level of input D.', ja: '入力Dの音量。' },
+    duration: { en: 'One-shot length in seconds.', ja: 'ワンショットの長さ(秒)。' },
+    bend: { en: 'Frequency bend over the sound.', ja: '音の中で動く周波数幅。' },
+    roughness: { en: 'Stick-slip roughness / instability.', ja: '摩擦のザラつき・不安定さ。' },
+    hardness: { en: 'Contact hardness; higher = sharper attack.', ja: '接触の硬さ。高いほどアタックが鋭い。' },
+    body: { en: 'Amount of wooden body resonance.', ja: '木板の胴鳴り量。' },
+    level: { en: 'Output level.', ja: '出力音量。' },
   };
   const PARAM_OVR = {
     'lfo.offset': { en: 'Center value of the output (bias).', ja: '出力の中心値(バイアス)。' },
@@ -1516,6 +1647,8 @@
     'envelope.decay': { en: 'Time to fall to the sustain level.', ja: 'サスティンまで下がる時間。' },
     'karplus.decay': { en: 'Ring length (s).', ja: '鳴りの長さ(秒)。' },
     'resonator.decay': { en: 'Ring length (s).', ja: '共鳴の長さ(秒)。' },
+    'woodtap.freq': { en: 'Main wooden body resonance.', ja: '木板の主な胴鳴り周波数。' },
+    'creak.freq': { en: 'Center tone of the squeak.', ja: 'きしみの中心音程。' },
   };
   function paramDesc(type, name, lang) {
     const o = PARAM_OVR[type + '.' + name] || PARAM_DESC[name];
@@ -1598,6 +1731,12 @@
     spread: '広がり',
     vowel: '母音',
     shift: 'シフト',
+    duration: '長さ',
+    bend: '曲がり',
+    roughness: 'ザラつき',
+    hardness: '硬さ',
+    body: '胴鳴り',
+    level: '音量',
   };
   const PARAM_LABEL_OVR = {
     'granular.cutoff': '音色',
@@ -1621,6 +1760,9 @@
     'pitchshift.semitones': '半音',
     'pitchshift.grain': '粒度',
     'wavetable.fmAmount': 'FM量',
+    'woodtap.freq': '胴鳴り',
+    'woodtap.body': '胴鳴り量',
+    'creak.freq': 'きしみ音程',
   };
   const OPTION_LABELS = {
     sine: 'サイン',

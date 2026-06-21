@@ -19,77 +19,55 @@
   }
 
   const woodFloorWalk = build(({ add, wire }) => {
-    // Dry close foley: dull wooden "toko" impacts plus narrow high "kii" creaks.
-    // Everything is synthesized from impulses/noise/oscillators; no external samples.
-    const stepTimes = '0.08, 0.57, 1.05, 1.54';
+    // "Toko": short wooden impacts. "Kii": noisy stick-slip creaks.
+    // No sine thumps or clean pitched beeps; every layer is procedural.
+    function placed(node, x, y, t, panValue, spread) {
+      const ts = add('timeshift', x + 230, y, { offset: t });
+      const pan = add('panner', x + 460, y, { pan: panValue, cvAmount: 0, spread: spread || 2 });
+      wire(node, 'out', ts, 'in');
+      wire(ts, 'out', pan, 'in');
+      return pan;
+    }
+    function tap(i, t, panValue, freq, level, decay, hardness) {
+      const y = 70 + i * 150;
+      const n = add('woodtap', 40, y, { freq, decay, hardness, body: 0.68, level, seed: 810 + i * 31 });
+      return placed(n, 40, y, t, panValue, 2.5);
+    }
+    function kii(i, t, panValue, freq, bend, duration, level, roughness) {
+      const y = 760 + i * 150;
+      const n = add('creak', 40, y, { freq, duration, bend, roughness, level, seed: 1200 + i * 37 });
+      return placed(n, 40, y, t, panValue, 5);
+    }
 
-    const knockSeq = add('sequencer', 40, 60, { times: stepTimes, levels: '1, 0.76, 0.92, 0.72', pitches: '', mode: 'env', attack: 0.001, decay: 0.085 });
-    const knockNoise = add('noise', 40, 250, { color: 'white', seed: 420 });
-    const knockBand = add('filter', 310, 210, { type: 'bandpass', cutoff: 780, q: 2.2, gain: 0, cvAmount: 0 });
-    const knockGate = add('gain', 580, 170, { gain: 1.15 });
-    const boardMid = add('resonator', 850, 80, { freq: 430, decay: 0.18, damping: 0.44, mix: 0.82 });
-    const boardLow = add('resonator', 850, 250, { freq: 165, decay: 0.26, damping: 0.62, mix: 0.52 });
-    const boardMix = add('mixer', 1120, 170, { levelA: 0.92, levelB: 0.46, levelC: 1, levelD: 1 });
+    const tap1 = tap(0, 0.08, -0.22, 470, 0.92, 0.105, 0.86);
+    const tap2 = tap(1, 0.55, 0.22, 405, 0.78, 0.12, 0.78);
+    const tap3 = tap(2, 1.04, -0.18, 520, 0.88, 0.095, 0.88);
+    const tap4 = tap(3, 1.50, 0.20, 435, 0.72, 0.115, 0.80);
 
-    const tickSeq = add('sequencer', 40, 460, { times: '0.115, 0.615, 1.095, 1.585', levels: '0.72, 0.56, 0.66, 0.50', pitches: '', mode: 'env', attack: 0.0005, decay: 0.024 });
-    const tickNoise = add('noise', 310, 470, { color: 'white', seed: 421 });
-    const tickBand = add('filter', 580, 470, { type: 'bandpass', cutoff: 2150, q: 5.5, gain: 0, cvAmount: 0 });
-    const tickGate = add('gain', 850, 470, { gain: 0.48 });
+    const kii1 = kii(0, 0.14, -0.12, 2150, 520, 0.23, 0.62, 0.76);
+    const kii2 = kii(1, 0.61, 0.14, 2680, -720, 0.20, 0.56, 0.82);
+    const kii3 = kii(2, 1.10, -0.10, 1900, 460, 0.17, 0.38, 0.65);
+    const kii4 = kii(3, 1.56, 0.12, 2400, -520, 0.24, 0.50, 0.78);
 
-    const squeakSeq = add('sequencer', 40, 680, { times: '0.145, 0.645, 1.145, 1.635', levels: '0.44, 0.68, 0.36, 0.58', pitches: '1540, 1280, 1720, 1420', mode: 'env', attack: 0.025, decay: 0.24 });
-    const squeakOsc = add('oscillator', 310, 680, { wave: 'triangle', freq: 0, fmAmount: 1, pmAmount: 0.18, voices: 2, detune: 7 });
-    const squeakGate = add('gain', 580, 680, { gain: 0.34 });
-    const squeakBand = add('filter', 850, 680, { type: 'bandpass', cutoff: 1580, q: 7, gain: 5, cvAmount: 0 });
-    const squeakChorus = add('chorus', 1120, 680, { rate: 5.5, depth: 1.4, delay: 7, feedback: 0.16, mix: 0.18 });
+    const tapMix = add('mixer', 820, 290, { levelA: 1.0, levelB: 0.86, levelC: 0.94, levelD: 0.80 });
+    const kiiMix = add('mixer', 820, 980, { levelA: 0.80, levelB: 0.74, levelC: 0.50, levelD: 0.68 });
+    const allMix = add('mixer', 1110, 590, { levelA: 1.0, levelB: 0.78, levelC: 1, levelD: 1 });
+    const hp = add('filter', 1380, 590, { type: 'highpass', cutoff: 135, q: 0.7, gain: 0, cvAmount: 0 });
+    const room = add('reverb', 1650, 590, { size: 0.12, damp: 0.82, mix: 0.045 });
+    const glue = add('compressor', 1920, 590, { threshold: -9, ratio: 2.2, attack: 0.0015, release: 0.09, makeup: 1 });
+    const out = add('output', 2190, 610, { gain: 0.9, normalize: true });
+    const note = add('note', 1110, 460, { text: '木床歩行: 木の打音=トコ、摩擦きしみ=キィ。低いサイン波は使わない。' });
 
-    const thumpSeq = add('sequencer', 40, 900, { times: stepTimes, levels: '0.55, 0.48, 0.52, 0.45', pitches: '83, 76, 88, 80', mode: 'env', attack: 0.001, decay: 0.13 });
-    const thumpOsc = add('oscillator', 310, 900, { wave: 'sine', freq: 0, fmAmount: 1, pmAmount: 0, voices: 1, detune: 12 });
-    const thumpGate = add('gain', 580, 900, { gain: 0.70 });
-    const thumpLP = add('filter', 850, 900, { type: 'lowpass', cutoff: 220, q: 0.7, gain: 0, cvAmount: 0 });
+    wire(tap1, 'out', tapMix, 'a'); wire(tap2, 'out', tapMix, 'b');
+    wire(tap3, 'out', tapMix, 'c'); wire(tap4, 'out', tapMix, 'd');
+    wire(kii1, 'out', kiiMix, 'a'); wire(kii2, 'out', kiiMix, 'b');
+    wire(kii3, 'out', kiiMix, 'c'); wire(kii4, 'out', kiiMix, 'd');
+    wire(tapMix, 'out', allMix, 'a'); wire(kiiMix, 'out', allMix, 'b');
+    wire(allMix, 'out', hp, 'in'); wire(hp, 'out', room, 'in');
+    wire(room, 'out', glue, 'in'); wire(glue, 'out', out, 'in');
 
-    const detailMix = add('mixer', 1380, 620, { levelA: 0.58, levelB: 0.62, levelC: 0.76, levelD: 1 });
-    const allMix = add('mixer', 1640, 360, { levelA: 1.0, levelB: 0.78, levelC: 1, levelD: 1 });
-    const glue = add('compressor', 1900, 360, { threshold: -12, ratio: 3, attack: 0.003, release: 0.13, makeup: 2 });
-    const room = add('reverb', 2160, 360, { size: 0.18, damp: 0.72, mix: 0.08 });
-    const pan = add('panner', 2420, 360, { pan: 0, cvAmount: 0, spread: 4 });
-    const out = add('output', 2680, 380, { gain: 0.9, normalize: true });
-    const note = add('note', 1370, 510, { text: '木床歩行: キィキィ成分はSqueak、トコトコ成分はKnock/Tickを調整' });
-
-    wire(knockNoise, 'out', knockBand, 'in');
-    wire(knockBand, 'out', knockGate, 'in');
-    wire(knockSeq, 'out', knockGate, 'cv');
-    wire(knockGate, 'out', boardMid, 'in');
-    wire(knockGate, 'out', boardLow, 'in');
-    wire(boardMid, 'out', boardMix, 'a');
-    wire(boardLow, 'out', boardMix, 'b');
-
-    wire(tickNoise, 'out', tickBand, 'in');
-    wire(tickBand, 'out', tickGate, 'in');
-    wire(tickSeq, 'out', tickGate, 'cv');
-
-    wire(squeakSeq, 'pitch', squeakOsc, 'fm');
-    wire(squeakOsc, 'out', squeakGate, 'in');
-    wire(squeakSeq, 'out', squeakGate, 'cv');
-    wire(squeakGate, 'out', squeakBand, 'in');
-    wire(squeakBand, 'out', squeakChorus, 'in');
-
-    wire(thumpSeq, 'pitch', thumpOsc, 'fm');
-    wire(thumpOsc, 'out', thumpGate, 'in');
-    wire(thumpSeq, 'out', thumpGate, 'cv');
-    wire(thumpGate, 'out', thumpLP, 'in');
-
-    wire(tickGate, 'out', detailMix, 'a');
-    wire(squeakChorus, 'out', detailMix, 'b');
-    wire(thumpLP, 'out', detailMix, 'c');
-    wire(boardMix, 'out', allMix, 'a');
-    wire(detailMix, 'out', allMix, 'b');
-    wire(allMix, 'out', glue, 'in');
-    wire(glue, 'out', room, 'in');
-    wire(room, 'out', pan, 'in');
-    wire(pan, 'out', out, 'in');
-
-    note.attachedTo = detailMix.id;
-  }, { duration: 2.2 });
+    note.attachedTo = allMix.id;
+  }, { duration: 2.15 });
 
   const PRESETS = {
 
