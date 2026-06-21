@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vfx",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js", "5601"],
+      "port": 5601
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Procedural VFX Generator</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">✦</span>
+      <span class="title">Procedural VFX Generator</span>
+    </div>
+    <div class="transport">
+      <button id="btn-play" class="btn">▶ Play</button>
+      <button id="btn-restart" class="btn" title="R">↺ Restart</button>
+      <div class="sep"></div>
+      <button id="btn-undo" class="btn" title="Undo (Ctrl+Z)">↶</button>
+      <button id="btn-redo" class="btn" title="Redo (Ctrl+Shift+Z)">↷</button>
+      <div class="sep"></div>
+      <label class="field">Zoom
+        <input id="view-scale" type="range" min="0.2" max="3" step="0.05" value="1">
+        <span id="view-scale-val">1.00×</span>
+      </label>
+      <label class="field check"><input id="toggle-origin" type="checkbox" checked> Origin</label>
+      <button id="btn-fit" class="btn" title="F">⤢ Fit</button>
+      <div class="sep"></div>
+      <button id="btn-dice" class="btn" title="選択ノード(なければ全体)のパラメータをランダムに揺らす">🎲 Randomize</button>
+    </div>
+    <div class="rightbar">
+      <label class="field check" title="ノード名を日本語表示"><input id="in-lang" type="checkbox"> 日本語</label>
+      <div class="sep"></div>
+      <select id="preset-select" title="Presets">
+        <option value="">— Presets —</option>
+      </select>
+      <button id="btn-load-preset" class="btn">Load</button>
+      <div class="sep"></div>
+      <button id="btn-export-panel" class="btn">⬇ Export</button>
+      <button id="btn-save" class="btn" title="Save graph (Ctrl+S)">Save</button>
+      <button id="btn-open" class="btn">Open</button>
+      <button id="btn-clear" class="btn danger">Clear</button>
+    </div>
+  </header>
+
+  <div id="body">
+    <aside id="palette">
+      <div class="palette-title">Nodes</div>
+      <div id="palette-list"></div>
+      <div class="palette-hint">
+        クリックで追加 / ポートをドラッグで接続 / 配線クリックで削除<br>
+        右クリックでノード検索追加 / Spaceで再生 / Delで削除
+      </div>
+    </aside>
+
+    <main id="stage-wrap">
+      <canvas id="stage"></canvas>
+      <div id="warn"></div>
+      <div id="hud">
+        <span>particles <b id="stat-count">0</b></span>
+        <span>emitters <b id="stat-emitters">0</b></span>
+        <span>t <b id="stat-time">0.0s</b></span>
+      </div>
+      <div id="export-panel">
+        <div class="exp-title">Sprite Sheet Export</div>
+        <label>Cols <input id="exp-cols" type="number" min="1" max="32" value="8"></label>
+        <label>Rows <input id="exp-rows" type="number" min="1" max="32" value="1"></label>
+        <label>Frame px <input id="exp-size" type="number" min="16" max="512" step="16" value="128"></label>
+        <label>Duration <input id="exp-dur" type="number" min="0.1" max="10" step="0.1" value="1.0"> s</label>
+        <label>FPS <input id="exp-fps" type="number" min="6" max="60" value="24"></label>
+        <label class="exp-check"><input id="exp-alpha" type="checkbox" checked> Transparent bg</label>
+        <div class="exp-row">
+          <button id="btn-export-sheet" class="btn primary">⬇ Sprite Sheet PNG</button>
+          <button id="btn-export-png" class="btn">Frame PNG</button>
+        </div>
+        <div class="exp-row">
+          <button id="btn-export-webm" class="btn">⬇ WebM Clip</button>
+        </div>
+        <div class="exp-hint">N=Cols×Rows frames sampled across Duration. Transparent for game engines (Woditor etc.).</div>
+      </div>
+    </main>
+
+    <section id="editor-wrap">
+      <div id="canvas-wrap">
+        <div id="world">
+          <svg id="wires" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div id="nodes"></div>
+        </div>
+        <div id="canvas-hint">左ドラッグ=範囲選択 / 右・中ドラッグ=パン / ホイール=ズーム / 右クリック=ノード追加</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<input id="file-input" type="file" accept="application/json" style="display:none">
+
+<script src="js/nodes.js"></script>
+<script src="js/graph.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/presets.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
